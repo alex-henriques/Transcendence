@@ -27,7 +27,7 @@ async function build() {
     logger: { level: env.LOG_LEVEL },
     // We sit behind the nginx edge; trust its forwarding headers so rate
     // limiting and logging see the real client address.
-    trustProxy: true,
+    trustProxy: 1,
     bodyLimit: 1_048_576,
   });
 

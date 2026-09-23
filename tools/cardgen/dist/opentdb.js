@@ -62,7 +62,7 @@ export async function fetchQuestions(params) {
  * a fact can always be traced back to the exact wording it came from.
  */
 export function questionId(question) {
-    return createHash('sha1')
+    return createHash('sha256')
         .update(`${question.question}|${question.correct_answer}`)
         .digest('hex');
 }
