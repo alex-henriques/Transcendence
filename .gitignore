@@ -1,4 +1,4 @@
-.env
+.env.example
 /infra/nginx/certs/
 node_modules/
 dist/
