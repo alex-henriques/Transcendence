@@ -396,13 +396,16 @@ export class RoomSession {
       if (doubleEnabled) {
         for (let i = 4; i < drawn.length; i += 5) doubleAt.add(i);
       }
-
+      const matchup = await prisma.tournamentMatchup.findFirst({
+        where: { roomId: this.roomId, status: { in: ['ready', 'playing'] } },
+      });
+      const tournamentId = matchup?.tournamentId ?? null;
       const created = await prisma.$transaction(async (tx) => {
         const match = await tx.match.create({
           data: {
             roomId: this.roomId,
             cardCount: drawn.length,
-            tournamentId: null,
+            tournamentId,
           },
         });
 
@@ -423,7 +426,7 @@ export class RoomSession {
         return match;
       });
 
-      this.match = await this.hydrate(created.id, room.difficulty, windowMs, settings?.comboEnabled ?? true);
+      this.match = await this.hydrate(created.id, room.difficulty, windowMs, settings?.comboEnabled ?? true, tournamentId);
       const m = this.match;
       m.phase = 'countdown';
       m.phaseEndsAt = Date.now() + MATCH_COUNTDOWN_MS;
@@ -453,6 +456,7 @@ export class RoomSession {
     difficulty: Difficulty,
     windowMs: number,
     comboEnabled: boolean,
+    tournamentId: number | null,
   ): Promise<ActiveMatch> {
     const [cards, players] = await Promise.all([
       prisma.matchCard.findMany({
@@ -544,7 +548,7 @@ export class RoomSession {
 
     return {
       matchId,
-      tournamentId: null,
+      tournamentId,
       deck,
       position: -1,
       phase: 'countdown',

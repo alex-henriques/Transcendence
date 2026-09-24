@@ -160,10 +160,6 @@ async function fetchProfile(
     if (!profile.email || profile.email_verified !== true) {
       throw badRequest('error.oauth.noEmail');
     }
-<<<<<<< HEAD
-=======
-    if (!profile.email) throw badRequest('error.oauth.noEmail');
->>>>>>> 621996acc464036120d25e6382210027a6a3c176
     return {
       providerUserId: profile.sub,
       email: profile.email.toLowerCase(),
