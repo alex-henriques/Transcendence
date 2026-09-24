@@ -14,6 +14,7 @@ import { token } from '../lib/random.js';
 import { safeEqual } from '../lib/tokens.js';
 import { issueRefreshToken } from '../lib/tokens.js';
 import { setRefreshCookie } from './auth.js';
+import { HttpError, badRequest, notFound } from '../lib/httpError.js';
 
 /**
  * OAuth 2.0 authorization-code flow (module 8).
@@ -153,9 +154,13 @@ async function fetchProfile(
     const profile = (await response.json()) as {
       sub: string;
       email?: string;
+      email_verified?: boolean;
       name?: string;
       picture?: string;
     };
+    if (!profile.email || profile.email_verified !== true) {
+      throw badRequest('error.oauth.noEmail');
+    }
     if (!profile.email) throw badRequest('error.oauth.noEmail');
     return {
       providerUserId: profile.sub,
@@ -248,6 +253,8 @@ async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile
 
   const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
   if (byEmail) {
+    if (byEmail.passwordHash != null)
+      throw badRequest('error.oauth.accountExists');
     await prisma.oAuthAccount.create({
       data: { userId: byEmail.id, provider, providerUserId: profile.providerUserId },
     });
@@ -320,7 +327,8 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       return reply.redirect(`${origin}/auth/callback`);
     } catch (error) {
       request.log.warn({ err: error, provider }, 'oauth callback failed');
-      return fail('exchange');
+      const exists = error instanceof HttpError && error.code === 'error.oauth.accountExists';
+      return fail(exists ? 'accountExists' : 'exchange');
     }
   });
 }
