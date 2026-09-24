@@ -18,6 +18,8 @@ import { verifyPassword } from '../lib/password.js';
 import { clearRefreshCookie } from './auth.js';
 import { onlineUserIds } from '../game/registry.js';
 import { computeUserStats, matchHistory } from '../services/stats.js';
+import { forfeitTournaments } from '../services/tournament.js';
+
 
 export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 
@@ -253,6 +255,8 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         throw unauthorized('error.auth.wrongPassword');
       }
     }
+    
+    await forfeitTournaments(me.id);
 
     if (user.avatarUrl?.startsWith('/api/uploads/')) {
       await unlink(path.join(UPLOAD_DIR, path.basename(user.avatarUrl))).catch(() => undefined);

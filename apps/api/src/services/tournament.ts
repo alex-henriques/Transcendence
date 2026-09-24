@@ -548,3 +548,33 @@ export async function markMatchupPlaying(roomId: number): Promise<void> {
 
 /** XP is granted for tournament matches too; the engine already called this. */
 export { grantMatchRewards };
+
+/**
+ * Settles every unfinished matchup a user is drawn into as a loss.
+ *
+ * Called before an account is erased. Erasure removes the user from the
+ * bracket, and a matchup left with one player can never be played, so the
+ * whole tournament would wait on it forever. The opponent advances instead.
+ */
+export async function forfeitTournaments(userId: number): Promise<void> {
+  const open = await prisma.tournamentMatchup.findMany({
+    where: {
+      status: { not: 'finished' },
+      OR: [{ playerAId: userId }, { playerBId: userId }],
+      tournament: { status: 'running' },
+    },
+  });
+
+  for (const matchup of open) {
+    const opponentId = matchup.playerAId === userId ? matchup.playerBId : matchup.playerAId;
+    await prisma.tournamentMatchup.update({
+      where: { id: matchup.id },
+      data: { status: 'finished', winnerId: opponentId },
+    });
+    await prisma.tournamentParticipant.updateMany({
+      where: { tournamentId: matchup.tournamentId, userId },
+      data: { eliminatedAt: new Date() },
+    });
+    await checkRoundCompletion(matchup.tournamentId, matchup.round);
+  }
+}
