@@ -33,7 +33,8 @@ export function Login(): JSX.Element {
 
   useEffect(() => {
     const oauthError = new URLSearchParams(location.search).get('oauth_error');
-    if (oauthError) setFormError('auth.oauthFailed');
+    if (oauthError) 
+      setFormError(oauthError === 'accountExists' ? 'auth.oauthAccountExists' : 'auth.oauthFailed');
   }, [location.search]);
 
   useEffect(() => {
