@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { createTournamentSchema } from '@wkb/shared';
 import { prisma } from '../db.js';
@@ -8,6 +9,10 @@ import { currentUser, requireAuth } from '../plugins/auth.js';
 import { bracketView, startTournament } from '../services/tournament.js';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
+
+async function lockTournament(tx: Prisma.TransactionClient, id: number): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM tournaments WHERE id = ${id} FOR UPDATE`;
+}
 
 export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/tournaments', { preHandler: requireAuth }, async () => {
@@ -60,21 +65,23 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const me = currentUser(request);
     const { id } = idParam.parse(request.params);
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id },
-      include: { participants: true },
-    });
-    if (!tournament) throw notFound();
-    if (tournament.status !== 'registration') throw badRequest('error.tournament.alreadyStarted');
-    if (tournament.participants.some((p) => p.userId === me.id)) {
-      return { tournament: await bracketView(id) };
-    }
-    if (tournament.participants.length >= tournament.size) {
-      throw badRequest('error.tournament.full');
-    }
-
-    await prisma.tournamentParticipant.create({
-      data: { tournamentId: id, userId: me.id, seed: tournament.participants.length },
+    await prisma.$transaction(async (tx) => {
+      await lockTournament(tx, id);
+      const tournament = await tx.tournament.findUnique({
+        where: { id },
+        include: { participants: true },
+      });
+      if (!tournament) throw notFound();
+      if (tournament.status !== 'registration') 
+        throw badRequest('error.tournament.alreadyStarted');
+      if (tournament.participants.some((p) => p.userId === me.id))
+        return;
+      if (tournament.participants.length >= tournament.size) {
+        throw badRequest('error.tournament.full');
+      }
+      await tx.tournamentParticipant.create({
+        data: { tournamentId: id, userId: me.id, seed: tournament.participants.length },
+      });
     });
     return { tournament: await bracketView(id) };
   });
@@ -96,31 +103,34 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const me = currentUser(request);
     const { id } = idParam.parse(request.params);
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id },
-      include: { participants: true },
-    });
-    if (!tournament) throw notFound();
-    if (tournament.createdById !== me.id) throw badRequest('error.tournament.hostOnly');
-    if (tournament.status !== 'registration') throw badRequest('error.tournament.alreadyStarted');
-
-    const seatsLeft = tournament.size - tournament.participants.length;
-    if (seatsLeft <= 0) return { tournament: await bracketView(id) };
-
-    const taken = new Set(tournament.participants.map((p) => p.userId));
-    const bots = await prisma.user.findMany({ where: { isBot: true }, select: { id: true } });
-    const available = shuffle(bots.map((b) => b.id).filter((botId) => !taken.has(botId)));
-
-    if (available.length < seatsLeft) throw badRequest('error.tournament.notEnoughBots');
-
-    let seed = tournament.participants.length;
-    for (const botId of available.slice(0, seatsLeft)) {
-      await prisma.tournamentParticipant.create({
-        data: { tournamentId: id, userId: botId, seed },
+    await prisma.$transaction(async (tx) => {
+      await lockTournament(tx, id);
+      const tournament = await tx.tournament.findUnique({
+        where: { id },
+        include: { participants: true },
       });
-      seed += 1;
-    }
+      if (!tournament)
+        throw notFound();
+      if (tournament.createdById !== me.id)
+        throw badRequest('error.tournament.hostOnly');
+      if (tournament.status !== 'registration')
+        throw badRequest('error.tournament.alreadyStarted');
+      
+      const seatsLeft = tournament.size - tournament.participants.length;
+      if (seatsLeft <= 0)
+        return;
 
+      const taken = new Set(tournament.participants.map((p) => p.userId));
+      const bots = await tx.user.findMany({ where: { isBot: true }, select: { id: true} });
+      const available = shuffle(bots.map((b) => b.id).filter((botId) => !taken.has(botId)));
+      if (available.length < seatsLeft)
+        throw badRequest('error.tournament.notEnoughBots');
+      let seed = tournament.participants.length;
+      for( const botId of available.slice(0, seatsLeft)) {
+        await tx.tournamentParticipant.create({ data: { tournamentId: id, userId: botId, seed } });
+        seed += 1;
+      }
+    });
     return { tournament: await bracketView(id) };
   });
 
