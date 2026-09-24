@@ -252,7 +252,8 @@
       "alreadyStarted": "This tournament has already started.",
       "full": "This tournament is full.",
       "needsFullBracket": "Fill every seat before starting.",
-      "notEnoughBots": "There are not enough opponents to fill the bracket."
+      "notEnoughBots": "There are not enough opponents to fill the bracket.",
+      "wrongPlayers": "Only the two drawn players can play this match. Add the opponent shown in the bracket."
     },
     "ws": {
       "badTicket": "Your connection could not be authenticated.",

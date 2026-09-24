@@ -400,6 +400,12 @@ export class RoomSession {
         where: { roomId: this.roomId, status: { in: ['ready', 'playing'] } },
       });
       const tournamentId = matchup?.tournamentId ?? null;
+      if (matchup) {
+        const drawn = [matchup.playerAId, matchup.playerBId];
+        const exact = participants.length === 2 && drawn.every((id) => id !== null && participants.includes(id));
+        if (!exact)
+          return 'error.tournament.wrongPlayers';
+      }
       const created = await prisma.$transaction(async (tx) => {
         const match = await tx.match.create({
           data: {

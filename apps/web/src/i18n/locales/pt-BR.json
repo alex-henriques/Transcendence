@@ -252,7 +252,8 @@
       "alreadyStarted": "Este torneio já começou.",
       "full": "Este torneio está cheio.",
       "needsFullBracket": "Preencha todas as vagas antes de começar.",
-      "notEnoughBots": "Não há adversários suficientes para completar a chave."
+      "notEnoughBots": "Não há adversários suficientes para completar a chave.",
+      "wrongPlayers": "Somente os dois jogadores sorteados podem jogar esta partida. Adicione o adversário mostrado na chave."
     },
     "ws": {
       "badTicket": "Não foi possível autenticar sua conexão.",

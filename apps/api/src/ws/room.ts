@@ -75,8 +75,13 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             if (!parsedCode.success) return fail('error.room.notFound');
 
             const room = await prisma.room.findUnique({ where: { code: parsedCode.data } });
-            if (!room) return fail('error.room.notFound');
-
+            if (!room) 
+              return fail('error.room.notFound');
+            const matchup = await prisma.tournamentMatchup.findFirst({
+              where: { roomId: room.id, status: { in: ['ready', 'playing'] } }
+            });
+            if (matchup && channel.userId !== matchup.playerAId && channel.userId !== matchup.playerBId)
+              return fail('error.room.full');
             let existing = getSession(room.id);
             if (!existing) {
               existing = new RoomSession(room.id, room.code);
