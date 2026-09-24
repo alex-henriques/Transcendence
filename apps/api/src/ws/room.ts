@@ -75,7 +75,7 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             if (!parsedCode.success) return fail('error.room.notFound');
 
             const room = await prisma.room.findUnique({ where: { code: parsedCode.data } });
-            if (!room) 
+            if (!room)
               return fail('error.room.notFound');
             const matchup = await prisma.tournamentMatchup.findFirst({
               where: { roomId: room.id, status: { in: ['ready', 'playing'] } }
@@ -87,7 +87,6 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
               existing = new RoomSession(room.id, room.code);
               setSession(room.id, existing);
             }
-            session = existing;
 
             // A player already in the running match is reconnecting; anyone
             // else is joining, and a full match has no seat for them.
@@ -96,7 +95,7 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             if (!rejoining && !existing.hasMatch && existing.participantCount() >= room.maxPlayers) {
               return fail('error.room.full');
             }
-
+            session = existing;
             existing.attach(channel);
             if (rejoining) await existing.markReconnected(channel.userId);
 

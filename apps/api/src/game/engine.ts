@@ -704,11 +704,13 @@ export class RoomSession {
 
     const entry = m.deck[m.position];
     if (!entry || entry.matchCardId !== params.matchCardId) return;
-    if (m.phase !== 'collecting') return;
+    if (m.phase !== 'collecting')
+      return;
 
     const player = m.players.get(params.userId);
     if (!player) return;
-    if (m.votes.has(params.userId)) return;
+    if (m.votes.has(params.userId)) 
+      return;
 
     const correct = (params.choice === 'truth') === entry.isTrue;
     const score = computeScore({
@@ -724,6 +726,14 @@ export class RoomSession {
     // still the score before this card, since totals are applied at the reveal.
     const { delta } = applyDelta(player.score, score.points);
 
+    m.votes.set(params.userId, {
+      choice: params.choice,
+      acceptedMs: params.acceptedMs,
+      trusted: params.trusted,
+      correct,
+      points: delta,
+      comboAfter: score.comboAfter,
+    });
     // The unique index on (match_card_id, match_player_id) is what actually
     // prevents a double vote; the in-memory check above is only a fast path.
     try {
@@ -741,18 +751,9 @@ export class RoomSession {
         },
       });
     } catch {
-      // Already voted (unique violation), so there is nothing more to do.
+      if (m.phase === 'collecting') m.votes.delete(params.userId);
       return;
     }
-
-    m.votes.set(params.userId, {
-      choice: params.choice,
-      acceptedMs: params.acceptedMs,
-      trusted: params.trusted,
-      correct,
-      points: delta,
-      comboAfter: score.comboAfter,
-    });
 
     this.sendTo(params.userId, {
       type: 'vote:ack',
