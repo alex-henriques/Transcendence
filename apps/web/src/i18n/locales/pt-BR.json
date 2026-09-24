@@ -131,6 +131,7 @@
     "demoTitle": "Contas de demonstração",
     "demoHint": "Senha para as três: {{password}}",
     "oauthFailed": "O login com o provedor não foi concluído. Tente novamente.",
+    "oauthAccountExists": "Já existe uma conta com este e-mail. Entre com a sua senha.",
     "signingIn": "Entrando…",
     "accountCreated": "Sua conta está pronta. Entre para começar a jogar."
   },

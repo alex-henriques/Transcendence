@@ -9,7 +9,6 @@ import {
   publicOrigins,
   type OAuthProviderName,
 } from '../env.js';
-import { badRequest, notFound } from '../lib/httpError.js';
 import { token } from '../lib/random.js';
 import { safeEqual } from '../lib/tokens.js';
 import { issueRefreshToken } from '../lib/tokens.js';
@@ -161,7 +160,6 @@ async function fetchProfile(
     if (!profile.email || profile.email_verified !== true) {
       throw badRequest('error.oauth.noEmail');
     }
-    if (!profile.email) throw badRequest('error.oauth.noEmail');
     return {
       providerUserId: profile.sub,
       email: profile.email.toLowerCase(),

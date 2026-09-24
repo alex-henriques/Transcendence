@@ -131,6 +131,7 @@
     "demoTitle": "Demo accounts",
     "demoHint": "Password for all three: {{password}}",
     "oauthFailed": "Sign-in with the provider did not complete. Please try again.",
+    "oauthAccountExists": "An account with this email already exists. Sign in with your password instead.",
     "signingIn": "Signing you in…",
     "accountCreated": "Your account is ready. Log in to start playing."
   },

@@ -131,6 +131,7 @@
     "demoTitle": "Comptes de démonstration",
     "demoHint": "Mot de passe pour les trois : {{password}}",
     "oauthFailed": "La connexion avec le fournisseur n'a pas abouti. Réessayez.",
+    "oauthAccountExists": "Un compte avec cette adresse e-mail existe déjà. Connectez-vous avec votre mot de passe.",
     "signingIn": "Connexion en cours…",
     "accountCreated": "Votre compte est prêt. Connectez-vous pour commencer à jouer."
   },
