@@ -25,9 +25,7 @@ import { registerRoomChannel } from './ws/room.js';
 async function build() {
   const app = Fastify({
     logger: { level: env.LOG_LEVEL },
-    // We sit behind the nginx edge; trust its forwarding headers so rate
-    // limiting and logging see the real client address.
-    trustProxy: 1,
+    trustProxy: 'loopback,uniquelocal',
     bodyLimit: 1_048_576,
   });
 
