@@ -280,8 +280,19 @@ async function simulateBotMatchup(params: {
     difficulty: tournament.difficulty,
     count: tournament.cardCount,
   });
-  if (deck.length === 0) return;
 
+  if (deck.length === 0) {
+    const [winnerId, loserId] = shuffle(botIds) as [number, number];
+    await prisma.tournamentMatchup.update({
+      where: { id: matchup.id }, 
+      data: { status: 'finished', winnerId },
+    });
+    await prisma.tournamentParticipant.updateMany({
+      where: { tournamentId: tournament.id, userId: loserId },
+      data: { eliminatedAt: new Date() },
+    });
+    return;
+  }
   const room = await prisma.room.create({
     data: {
       code: roomCode(),

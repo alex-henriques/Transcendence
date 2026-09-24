@@ -7,6 +7,7 @@ import { badRequest, notFound } from '../lib/httpError.js';
 import { shuffle } from '../lib/random.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { bracketView, startTournament } from '../services/tournament.js';
+import { availableDeckSize } from '../game/draw.js';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
@@ -37,7 +38,9 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/tournaments', { preHandler: requireAuth }, async (request, reply) => {
     const me = currentUser(request);
     const input = createTournamentSchema.parse(request.body);
-
+    const available = await availableDeckSize({ categoryIds: [], difficulty: input.difficulty });
+    if (available < 4)
+      throw badRequest('error.room.notEnoughCards');
     const tournament = await prisma.tournament.create({
       data: {
         name: input.name,
@@ -50,7 +53,6 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
         participants: { create: { userId: me.id, seed: 0 } },
       },
     });
-
     return reply.code(201).send({ tournament: await bracketView(tournament.id) });
   });
 
