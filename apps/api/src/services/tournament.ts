@@ -153,7 +153,7 @@ export async function startTournament(tournamentId: number, requestedBy: number)
   const slots = tournament.size;
   for (let i = 0; i < slots; i += 2) {
     const human = humans.shift();
-    const other = humans.shift() ?? bots.shift();
+    const other = bots.shift() ?? humans.shift();
     if (human !== undefined) ordered.push(human);
     if (other !== undefined) ordered.push(other);
   }
