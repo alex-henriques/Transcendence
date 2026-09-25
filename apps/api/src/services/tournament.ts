@@ -209,7 +209,15 @@ async function prepareRound(tournamentId: number, round: number): Promise<void> 
   });
 
   for (const matchup of matchups) {
-    if (!matchup.playerAId || !matchup.playerBId) continue;
+    if (!matchup.playerAId || !matchup.playerBId) 
+      continue;
+
+    const claimed = await prisma.tournamentMatchup.updateMany({
+      where: { id: matchup.id, status: 'pending' },
+      data: { status: 'ready' },
+    });
+    if (claimed.count === 0)
+      continue;
 
     const players = await prisma.user.findMany({
       where: { id: { in: [matchup.playerAId, matchup.playerBId] } },
