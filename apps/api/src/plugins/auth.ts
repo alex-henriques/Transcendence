@@ -13,18 +13,24 @@ function bearer(request: FastifyRequest): string | null {
 /** Route guard. Throws 401 when the access token is missing or invalid. */
 export async function requireAuth(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
   const raw = bearer(request);
-  if (!raw) throw unauthorized();
+  if (!raw) 
+    throw unauthorized();
 
   const claims = await verifyAccessToken(raw);
-  if (!claims) throw unauthorized('error.tokenInvalid');
-
+  if (!claims) 
+    throw unauthorized('error.tokenInvalid');
+  const user = await prisma.user.findUnique({
+    where: { id: claims.sub },
+    select: { lastSeenAt: true },
+  });
+  if (!user)
+    throw unauthorized('error.tokenInvalid');
   request.authUser = { id: claims.sub, displayName: claims.displayName };
-
-  // Presence is derived from last_seen_at; every authenticated request
-  // refreshes it, and the WebSocket heartbeat keeps it warm between requests.
-  void prisma.user
-    .update({ where: { id: claims.sub }, data: { lastSeenAt: new Date() } })
-    .catch(() => undefined);
+  if (!user.lastSeenAt || Date.now() - user.lastSeenAt.getTime() > 30_000) {
+    void prisma.user
+      .update({ where: { id: claims.sub }, data: { lastSeenAt: new Date() } })
+      .catch(() => undefined);
+  }
 }
 
 /** Same, but leaves `authUser` undefined instead of throwing. */
