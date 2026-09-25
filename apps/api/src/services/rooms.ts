@@ -1,6 +1,6 @@
 import type { RoomSummary } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { getSession } from '../game/registry.js';
+import { activeSessions, getSession } from '../game/registry.js';
 
 const roomInclude = {
   host: { select: { displayName: true } },
@@ -56,18 +56,26 @@ export async function roomSummaryById(roomId: number): Promise<RoomSummary | nul
 /**
  * The lobby listing: public rooms that somebody is actually in.
  *
- * Occupancy is a live fact, not a stored one, so the filter has to happen
- * after the summaries are built rather than in the query.
+ * Occupancy is a live fact held in memory, so the list starts from the rooms
+ * the engine has people in and only then asks the database about them. Asking
+ * the database first, for the newest rooms, would miss a busy older room once
+ * enough newer empty ones piled up in front of it.
  */
 export async function listPublicRooms(): Promise<RoomSummary[]> {
+  const occupied = activeSessions()
+    .filter((session) => session.participantCount() > 0)
+    .map((session) => session.roomId);
+  if (occupied.length === 0) 
+    return [];
+
   const rows = await prisma.room.findMany({
-    where: { visibility: 'public', status: { in: ['lobby', 'playing'] } },
+    where: { id: { in: occupied }, visibility: 'public', status: { in: ['lobby', 'playing'] } },
     include: roomInclude,
     orderBy: { createdAt: 'desc' },
     take: 60,
   });
-  const summaries = await Promise.all(rows.map(buildRoomSummary));
-  return summaries.filter((room) => room.playerCount > 0);
+  return Promise.all(rows.map(buildRoomSummary));
 }
+
 
 export { roomInclude };
