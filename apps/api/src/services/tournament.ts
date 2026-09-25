@@ -209,8 +209,16 @@ async function prepareRound(tournamentId: number, round: number): Promise<void> 
   });
 
   for (const matchup of matchups) {
-    if (!matchup.playerAId || !matchup.playerBId) 
+    // A seat left empty by an erased account. Nobody can play this matchup,
+    // so the player who is there advances, as they would if their opponent
+    // never turned up. Skipping it instead would stall the bracket for good.
+    if (!matchup.playerAId || !matchup.playerBId){
+      await prisma.tournamentMatchup.updateMany({
+        where: { id: matchup.id, status: 'pending' },
+        data: { status: 'finished', winnerId: matchup.playerAId ?? matchup.playerBId },
+      });
       continue;
+    }
 
     const claimed = await prisma.tournamentMatchup.updateMany({
       where: { id: matchup.id, status: 'pending' },
