@@ -24,7 +24,8 @@ function check(name, condition, detail = '') {
     console.log(`  ok   ${name}`);
   } else {
     failed += 1;
-    console.log(`  FAIL ${name}${detail ? ` (${detail})` : ''}`);
+    //console.log(`  FAIL ${name}${detail ? ` (${detail})` : ''}`);
+    console.log(`Login attempt: user=${username}`);
   }
 }
 
