@@ -984,6 +984,11 @@ export class RoomSession {
     return this.match?.players.has(userId) ?? false;
   }
 
+  forgetPlayer(userId: number): void {
+    this.match?.players.delete(userId);
+    this.match?.votes.delete(userId);
+  }
+
   /**
    * A socket has gone: the player pressed leave, closed the tab, or dropped.
    *

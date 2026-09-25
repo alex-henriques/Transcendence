@@ -16,7 +16,7 @@ import { publicProfile, sessionUser } from '../lib/serialize.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { verifyPassword } from '../lib/password.js';
 import { clearRefreshCookie } from './auth.js';
-import { onlineUserIds } from '../game/registry.js';
+import { activeSessions, onlineUserIds } from '../game/registry.js';
 import { computeUserStats, matchHistory } from '../services/stats.js';
 import { forfeitTournaments } from '../services/tournament.js';
 
@@ -257,6 +257,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     }
     
     await forfeitTournaments(me.id);
+    for (const session of activeSessions()) session.forgetPlayer(me.id);
 
     if (user.avatarUrl?.startsWith('/api/uploads/')) {
       await unlink(path.join(UPLOAD_DIR, path.basename(user.avatarUrl))).catch(() => undefined);
