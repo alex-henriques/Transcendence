@@ -180,7 +180,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return { user: sessionUser(user) };
   });
 
-  app.post('/api/auth/password', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/api/auth/password', { 
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 30, timeWindow: '10 minutes' } },
+  }, async (request, reply) => {
     const me = currentUser(request);
     const input = changePasswordSchema.parse(request.body);
 

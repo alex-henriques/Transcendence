@@ -234,7 +234,10 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
    * because erasure that leaves an id pointing at a deleted person behind is
    * not erasure.
    */
-  app.delete('/api/users/me', { preHandler: requireAuth }, async (request, reply) => {
+  app.delete('/api/users/me', { 
+    preHandler: requireAuth, 
+    config: { rateLimit: { max: 30, timeWindow: '10 minutes' } },
+  }, async (request, reply) => {
     const me = currentUser(request);
     const input = deleteAccountSchema.parse(request.body);
 
