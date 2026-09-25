@@ -1462,7 +1462,7 @@ on every page, a clause in the Terms of Service in all three languages, and
 
 Every fact carries a `source_ref` and a `license` column, so any card can be
 traced back to where it came from: `curated:<ref>` for the hand-written set and
-`opentdb:<sha1>` for anything derived from OpenTDB.
+`opentdb:<sha256>` for anything derived from OpenTDB.
 
 ---
 

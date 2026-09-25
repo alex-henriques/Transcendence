@@ -46,5 +46,5 @@ Every fact carries a `source_ref` and a `license` column in the database, so
 any individual card can be traced back to where it came from:
 
 - `curated:<ref>` for statements written and verified for this project.
-- `opentdb:<sha1>` for anything derived from the OpenTDB question with that
+- `opentdb:<sha256>` for anything derived from the OpenTDB question with that
   content hash, stored verbatim in `tools/cardgen/data/raw/questions.json`.

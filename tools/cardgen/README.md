@@ -18,7 +18,7 @@ Everything runs inside the pinned Node image, so you do not need Node installed.
 | Command | Step | Needs | What it does |
 |---|---|---|---|
 | `counts` | 1 | network | Asks OpenTDB for exact global and per-category counts. Nothing downstream is planned on an estimate. |
-| `collect` | 2-3 | network | Pulls the whole pool using a session token, so the API never returns the same question twice in one run. Writes the raw JSON to `data/raw/questions.json`, keyed by the SHA-1 of each question. |
+| `collect` | 2-3 | network | Pulls the whole pool using a session token, so the API never returns the same question twice in one run. Writes the raw JSON to `data/raw/questions.json`, keyed by the SHA-256 of each question. |
 | `convert` | 4-5 | offline | Turns questions into facts and applies the filters. |
 | `forms` | 6 | `ANTHROPIC_API_KEY` | Writes the affirmative and counter-wording of each fact, twenty per call. |
 | `verify` | 7 | `ANTHROPIC_API_KEY` | A blind check. The model reads a wording without its stored label and says whether it is true. |
