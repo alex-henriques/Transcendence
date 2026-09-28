@@ -1404,6 +1404,16 @@ sit inside a sentence, which that criterion exempts. Fourteen routes were checke
 for horizontal overflow at eight widths from 320px to 1440px. I did not do a
 screen-reader pass, so I am not claiming the WCAG 2.1 AA module.
 
+Reusing a rotated refresh token is not treated as theft. The textbook defence
+is to revoke every session of a user whose old token shows up again, but here
+it would log people out for ordinary reasons: two tabs renewing at the same
+moment, or another device renewing after a password change, both present a
+token that was just revoked. Telling those apart from a stolen token needs
+each token to record what replaced it, which the schema does not do. The
+cookie is httpOnly, Secure and SameSite=Strict, so stealing it in the first
+place is already hard.
+
+
 ---
 
 ## Evaluation checklist
