@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MATCH_COUNTDOWN_MS, type RoomSettingsPayload } from '@wkb/shared';
 import { api } from '../api/client.js';
-import { useAuth } from '../auth/AuthContext.js';
+import { useAuth, type SessionUser } from '../auth/AuthContext.js';
 import { useRoomChannel, type RoomChannel } from '../ws/useRoomChannel.js';
 import { Alert, Avatar, Button, Spinner } from '../components/ui.js';
 import { CardFace, Scoreboard, TimerBar, VoteButtons } from '../components/game.js';
@@ -650,10 +650,29 @@ function RevealPanel({ channel }: { channel: RoomChannel }): JSX.Element {
 // ---------------------------------------------------------------------------
 
 function FinalScoreboard({ channel }: { channel: RoomChannel }): JSX.Element {
-  const { t } = useTranslation();
-  const { user } = useAuth();
+    const { t } = useTranslation();
+  const { user, patchUser } = useAuth();
   const ended = channel.ended;
-  if (!ended) return <></>;
+  const endedMatchId = ended?.matchId ?? null;
+
+  // The browser's copy of the account was taken at sign-in, so the XP this
+  // match just paid out is not in it. Ask the server for the fresh copy once,
+  // or the progress line below and the profile page show the XP from before.
+  useEffect(() => {
+    if (endedMatchId === null) return undefined;
+    let cancelled = false;
+    void api
+      .get<{ user: SessionUser }>('/api/auth/me')
+      .then(({ user: fresh }) => {
+        if (!cancelled) patchUser(fresh);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [endedMatchId, patchUser]);
+  if (!ended) 
+    return <></>;
 
   const top = ended.scoreboard[0];
   const tied = ended.scoreboard.filter((entry) => entry.rank === 1).length > 1;

@@ -125,24 +125,28 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
 
   for (const player of players) {
     if (player.user.isBot) continue;
-
     const xpGained = xpForMatch({ score: player.score, rank: player.finalRank });
-    const xpBefore = player.user.xp;
-    const xpAfter = xpBefore + xpGained;
+    // The database adds the XP itself, rather than us writing a total worked
+    // out from a value read earlier. Two matches ending at the same moment
+    // would otherwise both start from the same XP, and one reward would be lost.
+    const updated = await prisma.user.update({
+      where: { id: player.userId },
+      data: { xp: { increment: xpGained } },
+      select: { xp: true },
+    });
+    const xpAfter = updated.xp;
+    const xpBefore = xpAfter - xpGained;
     const levelBefore = levelFromXp(xpBefore);
     const levelAfter = levelFromXp(xpAfter);
-
     await prisma.user.update({
       where: { id: player.userId },
-      data: { xp: xpAfter, level: levelAfter },
+      data: { level: levelAfter },
     });
-
     const slugs = await unlockedSlugs({
       userId: player.userId,
       matchId,
       level: levelAfter,
     });
-
     const newlyUnlocked: MatchAward['achievements'] = [];
     if (slugs.length > 0) {
       const rows = await prisma.achievement.findMany({ where: { slug: { in: slugs } } });
