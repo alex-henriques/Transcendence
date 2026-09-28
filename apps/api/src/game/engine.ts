@@ -996,6 +996,10 @@ export class RoomSession {
   forgetPlayer(userId: number): void {
     this.match?.players.delete(userId);
     this.match?.votes.delete(userId);
+    for (const channel of this.channelsFor(userId)) {
+      this.channels.delete(channel);
+      channel.close(4403, 'account deleted');
+    }
   }
 
   /**
