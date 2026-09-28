@@ -28,6 +28,9 @@ import { roomSummaryById } from '../services/rooms.js';
 import { grantMatchRewards } from '../services/rewards.js';
 import { reportMatchResult } from '../services/tournament.js';
 
+// how long a match waits for a human to come back once the last one has gone
+const ABANDON_GRACE_MS = 30_000;
+
 interface DeckEntry {
   matchCardId: number;
   cardId: number;
@@ -105,6 +108,7 @@ export class RoomSession {
   private phaseTimer: NodeJS.Timeout | null = null;
   private botTimers = new Set<NodeJS.Timeout>();
   private starting = false;
+  private abandonTimer: NodeJS.Timeout | null = null;
   /** The results of the card currently being revealed, for a language switch. */
   private lastResults: RevealedPlayerResult[] = [];
 
@@ -119,6 +123,11 @@ export class RoomSession {
 
   attach(channel: Channel): void {
     this.channels.add(channel);
+    // someone came back in time. the match isn't abandoned.
+    if (this.abandonTimer) {
+      clearTimeout(this.abandonTimer);
+      this.abandonTimer = null;
+    }
   }
 
   detach(channel: Channel): void {
@@ -999,10 +1008,24 @@ export class RoomSession {
     // A bot holds no socket, so an empty channel set is exactly "no humans
     // left" and there is nobody for the bots to go on playing in front of.
     if (this.channels.size === 0) {
-      if (this.match) await this.abandon();
+    // for a moment a page reloads. give the players the grace period to come back first
+      if (this.match && !this.abandonTimer)
+      {
+        this.abandonTimer = setTimeout(() => {
+          this.abandonTimer = null;
+          void this.abandonIfStillEmpty().catch(() => undefined);
+        }, ABANDON_GRACE_MS);
+      }
       return;
     }
     await this.reassignHost();
+  }
+
+  private async abandonIfStillEmpty(): Promise<void> {
+    if (this.channels.size > 0)
+      return;
+    await this.abandon();
+    await this.dispose();
   }
 
   /**
@@ -1105,6 +1128,10 @@ export class RoomSession {
   async dispose(): Promise<void> {
     this.clearPhaseTimer();
     this.clearBotTimers();
+    if (this.abandonTimer) {
+      clearTimeout(this.abandonTimer);
+      this.abandonTimer = null;
+    }
     this.pendingBots.clear();
     dropSession(this.roomId);
 
