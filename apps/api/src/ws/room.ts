@@ -8,6 +8,7 @@ import { redeemTicket } from './ticket.js';
 import { RoomSession } from '../game/engine.js';
 import { getSession, setSession } from '../game/registry.js';
 import { markMatchupPlaying } from '../services/tournament.js';
+import { availableDeckSize } from '../game/draw.js';
 
 /**
  * The match channel.
@@ -146,12 +147,28 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             if (room.hostUserId !== channel.userId) return fail('error.match.hostOnly');
 
             const parsed = roomSettingsSchema.safeParse(event.settings);
-            if (!parsed.success) return fail('error.validation');
+            if (!parsed.success) 
+              return fail('error.validation');
+            const matchup = await prisma.tournamentMatchup.findFirst({
+              where: { roomId: room.id },
+              select: { id: true },
+            });
+            if (matchup)
+              return fail('error.tournament.alreadyStarted');
+            if (room.mode === 'category' && parsed.data.categoryIds.length === 0) {
+              return fail('error.validation');
+            }
+              const available = await availableDeckSize({
+                categoryIds: parsed.data.categoryIds,
+                difficulty: room.difficulty,
+              });
+              if (available < 4)
+                return fail('error.room.notEnoughCards');
 
             await prisma.roomSettings.update({
               where: { roomId: session.roomId },
               data: {
-                cardCount: parsed.data.cardCount,
+                cardCount: Math.min(parsed.data.cardCount, available),
                 categoryIds: parsed.data.categoryIds,
                 answerWindowMs: parsed.data.answerWindowMs,
                 comboEnabled: parsed.data.comboEnabled,
