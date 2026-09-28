@@ -146,11 +146,17 @@ export const api = {
    * started by then.
    */
   download: async (path: string, fallbackName: string): Promise<void> => {
-    const headers: Record<string, string> = {};
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-    const response = await fetch(path, { headers, credentials: 'same-origin' });
-    if (!response.ok) throw await parseError(response);
-
+    const send = () => {
+      const headers: Record<string, string> = {};
+      if (accessToken)
+        headers.Authorization = `Bearer ${accessToken}`;
+      return fetch(path, { headers, credentials: 'same-origin' });
+    };
+    let response = await send();
+    if (response.status === 401 && (await refreshSession()))
+      response = await send();
+    if (!response.ok)
+      throw await parseError(response);
     const disposition = response.headers.get('Content-Disposition') ?? '';
     const named = /filename="([^"]+)"/.exec(disposition);
 
