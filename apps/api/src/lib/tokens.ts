@@ -90,8 +90,23 @@ export async function rotateRefreshToken(
     return next;
   });
 
-  if (!rotated) return null;
+  if (!rotated) 
+    return null;
   return { userId: record.userId, refreshToken: rotated };
+}
+
+// True when this token was revoked in the last few seconds.
+//every tab shares one refresh cookie. when two tabs renew at the same time
+// the second one presents the token the first has just rotated away.
+//that's not a stolen token and deleting the cookie in answer would delete the 
+//fresh one the first tab has just received.
+export async function wasJustRotated(raw: string): Promise<boolean> {
+  const record = await prisma.refreshToken.findUnique({
+    where: { tokenHash: fingerprint(raw) }
+  });
+  if (!record?.revokedAt)
+    return false;
+  return Date.now() - record.revokedAt.getTime() < 10_000;
 }
 
 export async function revokeRefreshToken(raw: string): Promise<void> {

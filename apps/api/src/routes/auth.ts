@@ -17,6 +17,7 @@ import {
   revokeRefreshToken,
   rotateRefreshToken,
   signAccessToken,
+  wasJustRotated,
 } from '../lib/tokens.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { issueTicket } from '../ws/ticket.js';
@@ -126,7 +127,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const rotated = await rotateRefreshToken(presented);
     if (!rotated) {
-      clearRefreshCookie(reply);
+      if (!(await wasJustRotated(presented)))
+        clearRefreshCookie(reply);
       return { authenticated: false };
     }
 
@@ -151,7 +153,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const rotated = await rotateRefreshToken(presented);
     if (!rotated) {
-      clearRefreshCookie(reply);
+      if (!(await wasJustRotated(presented)))
+        clearRefreshCookie(reply);
       throw unauthorized('error.auth.sessionExpired');
     }
 
