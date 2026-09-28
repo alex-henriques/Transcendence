@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { createTournamentSchema } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { badRequest, notFound } from '../lib/httpError.js';
+import { badRequest, forbidden,  notFound } from '../lib/httpError.js';
 import { shuffle } from '../lib/random.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { bracketView, startTournament } from '../services/tournament.js';
@@ -114,7 +114,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       if (!tournament)
         throw notFound();
       if (tournament.createdById !== me.id)
-        throw badRequest('error.tournament.hostOnly');
+        throw forbidden('error.tournament.hostOnly');
       if (tournament.status !== 'registration')
         throw badRequest('error.tournament.alreadyStarted');
       
@@ -141,7 +141,10 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     const { id } = idParam.parse(request.params);
 
     const error = await startTournament(id, me.id);
-    if (error) throw badRequest(error);
+    if (error === 'error.tournament.hostOnly')
+      throw forbidden(error);
+    if (error) 
+      throw badRequest(error);
 
     return { tournament: await bracketView(id) };
   });

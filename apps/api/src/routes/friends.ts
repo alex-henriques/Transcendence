@@ -131,7 +131,14 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/friends/:id/block', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const { id } = idParam.parse(request.params);
-    if (id === me.id) throw badRequest('error.friends.self');
+    if (id === me.id) 
+      throw badRequest('error.friends.self');
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!target)
+      throw notFound();
 
     await prisma.friendship.deleteMany({
       where: {
