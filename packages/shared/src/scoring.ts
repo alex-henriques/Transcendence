@@ -56,6 +56,11 @@ export function computeScore(input: ScoreInput): ScoreResult {
   return { points, speedBonus, comboAfter, comboMultiplier };
 }
 
+//The browser decides when it answers a ping, so a client that delays its answers
+//could otherwise make its connection look slow as it likes and have any reaction
+//time accepted.
+const MAX_TRUSTED_RTT_MS = 1_000;
+
 /**
  * Bounds the reaction time a client may claim for a card (spec §11, RTT validation).
  *
@@ -75,15 +80,13 @@ export function validateReaction(params: {
   windowMs: number;
   toleranceMs?: number;
 }): { acceptedMs: number; trusted: boolean } {
-  const { claimedMs, serverElapsedMs, rttMs, windowMs } = params;
+  const { claimedMs, serverElapsedMs, windowMs } = params;
   const tolerance = params.toleranceMs ?? 250;
-
+  const rttMs = Math.min(params.rttMs, MAX_TRUSTED_RTT_MS);
   const lower = Math.max(0, serverElapsedMs - rttMs - tolerance);
   const upper = serverElapsedMs + tolerance;
-
   const trusted =
     Number.isFinite(claimedMs) && claimedMs >= 0 && claimedMs >= lower && claimedMs <= upper;
-
   const acceptedMs = trusted ? Math.min(claimedMs, windowMs) : windowMs;
   return { acceptedMs, trusted };
 }

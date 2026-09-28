@@ -1125,9 +1125,13 @@ impossible reaction time.
 I bounded what a client is allowed to claim. The server pings every 5 seconds
 and keeps a moving average of round-trip time per connection. A truthful report
 has to sit inside `[serverElapsed - rtt - 250ms, serverElapsed + 250ms]`.
-Anything outside falls back to the worst time of the round. All three numbers,
-claimed, RTT and accepted, are stored separately, so the behaviour can be
-audited afterwards. It is about 40 lines, in `packages/shared/src/scoring.ts`.
+Anything outside falls back to the worst time of the round. The RTT used there
+is capped at one second: the client decides when it answers a ping, so without
+the cap a client that delays its pongs could widen the window as far as it
+likes. All three numbers, claimed, RTT and accepted, are stored separately, so
+the behaviour can be audited afterwards. It is about 40 lines, in
+`packages/shared/src/scoring.ts`.
+
 
 Reconnection without replay. The obvious design streams one card at a time and
 rebuilds state when someone returns, which is fiddly and easy to get subtly
