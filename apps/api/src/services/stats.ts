@@ -49,10 +49,10 @@ export async function computeUserStats(userId: number): Promise<UserStats> {
       where: { userId, ...finished },
       select: { score: true, finalRank: true, comboMax: true },
     }),
-    prisma.answer.count({ where: { matchPlayer: { userId } } }),
-    prisma.answer.count({ where: { matchPlayer: { userId }, isCorrect: true } }),
+    prisma.answer.count({ where: { matchPlayer: { userId, ...finished } } }),
+    prisma.answer.count({ where: { matchPlayer: { userId, ...finished }, isCorrect: true } }),
     prisma.answer.aggregate({
-      where: { matchPlayer: { userId }, isCorrect: true },
+      where: { matchPlayer: { userId, ...finished }, isCorrect: true },
       _min: { acceptedReactionMs: true },
     }),
     prisma.$queryRaw<{ slug: string; name: string; answers: bigint; correct: bigint }[]>(Prisma.sql`
@@ -62,6 +62,7 @@ export async function computeUserStats(userId: number): Promise<UserStats> {
              count(*) FILTER (WHERE a.is_correct)        AS correct
       FROM answers a
       JOIN match_players mp ON mp.id = a.match_player_id
+      JOIN matches       m ON m.id = mp.match_id AND m.ended_at IS NOT NULL
       JOIN match_cards  mc ON mc.id = a.match_card_id
       JOIN cards         c ON c.id  = mc.card_id
       JOIN facts         f ON f.id  = c.fact_id
