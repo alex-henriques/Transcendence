@@ -3,8 +3,9 @@
          as long as the bundle takes to parse. Inline, tiny, and it fails soft:
          a browser with site data blocked throws on localStorage and simply
          leaves the stylesheet's own default in place. */
-      try {
-        var t = localStorage.getItem('wkb.theme');
+{
+         try {
+        const t = localStorage.getItem('wkb.theme');
         if (t === 'light' || t === 'dark') {
           document.documentElement.setAttribute('data-theme', t);
           document
@@ -14,3 +15,4 @@
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#16131c');
         }
       } catch (e) {}
+}
