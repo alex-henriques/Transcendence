@@ -90,7 +90,8 @@ for (const origin of [...publicOrigins].reverse()) {
  */
 function originFor(request: FastifyRequest): string {
   const host = request.headers.host;
-  if (!host) return env.PUBLIC_ORIGIN;
+  if (!host) 
+    return env.PUBLIC_ORIGIN;
   return ORIGIN_BY_HOST.get(host) ?? env.PUBLIC_ORIGIN;
 }
 
@@ -116,7 +117,6 @@ async function exchangeCode(
   origin: string,
 ): Promise<string> {
   const config = oauthProviders[provider];
-
   const response = await fetch(ENDPOINTS[provider].token, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -131,9 +131,11 @@ async function exchangeCode(
     }),
   });
 
-  if (!response.ok) throw badRequest('error.oauth.exchangeFailed');
+  if (!response.ok) 
+    throw badRequest('error.oauth.exchangeFailed');
   const payload = (await response.json()) as { access_token?: string };
-  if (!payload.access_token) throw badRequest('error.oauth.exchangeFailed');
+  if (!payload.access_token) 
+    throw badRequest('error.oauth.exchangeFailed');
   return payload.access_token;
 }
 
@@ -146,10 +148,10 @@ async function fetchProfile(
     Accept: 'application/json',
     'User-Agent': 'wkb-ft-transcendence',
   };
-
   if (provider === 'google') {
     const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers });
-    if (!response.ok) throw badRequest('error.oauth.profileFailed');
+    if (!response.ok) 
+      throw badRequest('error.oauth.profileFailed');
     const profile = (await response.json()) as {
       sub: string;
       email?: string;
@@ -170,14 +172,16 @@ async function fetchProfile(
 
   if (provider === '42') {
     const response = await fetch('https://api.intra.42.fr/v2/me', { headers });
-    if (!response.ok) throw badRequest('error.oauth.profileFailed');
+    if (!response.ok) 
+      throw badRequest('error.oauth.profileFailed');
     const profile = (await response.json()) as {
       id: number;
       login: string;
       email?: string;
       image?: { link?: string | null; versions?: { medium?: string | null } };
     };
-    if (!profile.email) throw badRequest('error.oauth.noEmail');
+    if (!profile.email) 
+      throw badRequest('error.oauth.noEmail');
     return {
       providerUserId: String(profile.id),
       email: profile.email.toLowerCase(),
@@ -193,7 +197,8 @@ async function fetchProfile(
   }
 
   const response = await fetch('https://api.github.com/user', { headers });
-  if (!response.ok) throw badRequest('error.oauth.profileFailed');
+  if (!response.ok) 
+    throw badRequest('error.oauth.profileFailed');
   const profile = (await response.json()) as {
     id: number;
     login: string;
@@ -201,7 +206,6 @@ async function fetchProfile(
     avatar_url?: string;
     email?: string | null;
   };
-
   let email = profile.email ?? null;
   if (!email) {
     // GitHub hides the address unless it is public; ask for the verified one.
@@ -215,8 +219,8 @@ async function fetchProfile(
       email = emails.find((e) => e.primary && e.verified)?.email ?? emails.find((e) => e.verified)?.email ?? null;
     }
   }
-  if (!email) throw badRequest('error.oauth.noEmail');
-
+  if (!email) 
+    throw badRequest('error.oauth.noEmail');
   return {
     providerUserId: String(profile.id),
     email: email.toLowerCase(),
@@ -229,11 +233,11 @@ async function fetchProfile(
 async function uniqueDisplayName(preferred: string): Promise<string> {
   const base = preferred.trim().slice(0, 20).replace(/[^\p{L}\p{N} _.-]/gu, '') || 'player';
   const padded = base.length >= 3 ? base : `${base}_player`.slice(0, 20);
-
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const candidate = attempt === 0 ? padded : `${padded.slice(0, 20)}${attempt}`;
     const taken = await prisma.user.findUnique({ where: { displayName: candidate } });
-    if (!taken) return candidate;
+    if (!taken) 
+      return candidate;
   }
   return `player_${token(4)}`;
 }
@@ -247,18 +251,17 @@ async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile
   const linked = await prisma.oAuthAccount.findUnique({
     where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } },
   });
-  if (linked) return linked.userId;
-
+  if (linked) 
+    return linked.userId;
   const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
   if (byEmail) {
-    if (byEmail.passwordHash != null)
+    if (byEmail.passwordHash != null || byEmail.isBot)
       throw badRequest('error.oauth.accountExists');
     await prisma.oAuthAccount.create({
       data: { userId: byEmail.id, provider, providerUserId: profile.providerUserId },
     });
     return byEmail.id;
   }
-
   const created = await prisma.user.create({
     data: {
       email: profile.email,
@@ -279,10 +282,11 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     const parsed = providerSchema.safeParse(
       (request.params as { provider?: string }).provider,
     );
-    if (!parsed.success) throw notFound();
+    if (!parsed.success) 
+      throw notFound();
     const provider = parsed.data;
-    if (!oauthProviders[provider].enabled) throw notFound('error.oauth.notConfigured');
-
+    if (!oauthProviders[provider].enabled) 
+      throw notFound('error.oauth.notConfigured');
     const state = token(24);
     reply.setCookie(STATE_COOKIE, state, {
       httpOnly: true,
@@ -291,37 +295,33 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       path: '/api/auth/oauth',
       maxAge: 600,
     });
-
     return reply.redirect(authorizeUrl(provider, state, originFor(request)));
   });
-
   app.get('/api/auth/oauth/:provider/callback', async (request, reply) => {
     const parsed = providerSchema.safeParse((request.params as { provider?: string }).provider);
-    if (!parsed.success) throw notFound();
+    if (!parsed.success) 
+      throw notFound();
     const provider = parsed.data;
-    if (!oauthProviders[provider].enabled) throw notFound('error.oauth.notConfigured');
-
+    if (!oauthProviders[provider].enabled) 
+      throw notFound('error.oauth.notConfigured');
     const query = request.query as { code?: string; state?: string; error?: string };
     reply.clearCookie(STATE_COOKIE, { path: '/api/auth/oauth' });
-
     const origin = originFor(request);
     const fail = (reason: string) =>
       reply.redirect(`${origin}/login?oauth_error=${encodeURIComponent(reason)}`);
-
-    if (query.error) return fail(query.error);
-
+    if (query.error) 
+      return fail(query.error);
     const expected = request.cookies[STATE_COOKIE];
-    if (!query.state || !expected || !safeEqual(query.state, expected)) return fail('state');
-    if (!query.code) return fail('code');
-
+    if (!query.state || !expected || !safeEqual(query.state, expected)) 
+      return fail('state');
+    if (!query.code) 
+      return fail('code');
     try {
       const accessToken = await exchangeCode(provider, query.code, origin);
       const profile = await fetchProfile(provider, accessToken);
       const userId = await resolveUser(provider, profile);
-
       await prisma.user.update({ where: { id: userId }, data: { lastSeenAt: new Date() } });
       setRefreshCookie(reply, await issueRefreshToken(userId));
-
       return reply.redirect(`${origin}/auth/callback`);
     } catch (error) {
       request.log.warn({ err: error, provider }, 'oauth callback failed');
