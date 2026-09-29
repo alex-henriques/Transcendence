@@ -4,7 +4,7 @@
 set -e
 
 echo "[entrypoint] applying migrations"
-npx prisma migrate deploy --schema prisma/schema.prisma
+npx --no-install prisma migrate deploy --schema prisma/schema.prisma
 
 echo "[entrypoint] seeding reference data (idempotent)"
 node dist/seed/index.js
