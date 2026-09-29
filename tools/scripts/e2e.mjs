@@ -205,7 +205,7 @@ async function main() {
   check(
     'signing up does not start a session',
     host.created.json.accessToken === undefined && !host.created.headers.get('set-cookie'),
-    host.created.headers.get('set-cookie') ?? 'a token came back',
+    host.created.headers.get('set-cookie') ? 'a session cookie came back' : 'a token came back',
   );
   check('the new account can then log in', typeof host.token === 'string' && host.token.length > 20);
 
