@@ -24,7 +24,17 @@ import { registerRoomChannel } from './ws/room.js';
 
 async function build() {
   const app = Fastify({
-    logger: { level: env.LOG_LEVEL },
+    logger: {
+      level: env.LOG_LEVEL,
+      // WebSocket tickets and OAuth codes travel after the `?`, so each
+      // request is logged by its path alone and those never reach a log file.
+      serializers: {
+        req: (request) => ({
+          method: request.method,
+          url: request.url?.split('?')[0],
+        }),
+      },
+    },
     trustProxy: (_address, hop) => hop === 0,
     bodyLimit: 1_048_576,
   });
