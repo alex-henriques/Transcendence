@@ -131,7 +131,7 @@ export const ACHIEVEMENTS: AchievementSeed[] = [
   { slug: 'stargazer', name: 'Stargazer', description: 'Answer 25 space cards correctly.', criteria: { kind: 'category_correct', categorySlug: 'space', threshold: 25 } },
 ];
 
-/** Accounts an evaluator can log into without signing up first. */
+//Accounts people can use and test before signing in. 
 export const DEMO_USERS = [
   { email: 'ada@wkb.local', displayName: 'Ada', locale: 'en' },
   { email: 'grace@wkb.local', displayName: 'Grace', locale: 'pt-BR' },
@@ -139,3 +139,11 @@ export const DEMO_USERS = [
 ];
 
 export const DEMO_PASSWORD = 'Password1!';
+
+/**
+ * Demo accounts are shared by everyone trying the app, so the settings that
+ * would break them for the next person (password, name, deletion) stay fixed.
+ */
+export function isDemoAccount(email: string): boolean {
+  return DEMO_USERS.some((demo) => demo.email === email);
+}

@@ -8,9 +8,10 @@ import {
 } from '@wkb/shared';
 import { prisma } from '../db.js';
 import { cookieSecure, env, oauthProviders } from '../env.js';
-import { badRequest, conflict, unauthorized } from '../lib/httpError.js';
+import { badRequest, conflict, forbidden,  unauthorized } from '../lib/httpError.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import { sessionUser } from '../lib/serialize.js';
+import { isDemoAccount } from '../seed/data.js';
 import {
   issueRefreshToken,
   revokeAllForUser,
@@ -191,7 +192,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const input = changePasswordSchema.parse(request.body);
 
     const user = await prisma.user.findUnique({ where: { id: me.id } });
-    if (!user) throw unauthorized();
+    if (!user) 
+      throw unauthorized();
+    if (isDemoAccount(user.email))
+      throw forbidden();
     if (!user.passwordHash) {
       throw badRequest('error.auth.noPasswordSet', { currentPassword: 'error.auth.noPasswordSet' });
     }

@@ -10,11 +10,12 @@ import {
   updateProfileSchema,
 } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { badRequest, conflict, notFound, tooLarge, unauthorized } from '../lib/httpError.js';
+import { badRequest, conflict, forbidden,  notFound, tooLarge, unauthorized } from '../lib/httpError.js';
 import { EXTENSION, sniffImage } from '../lib/images.js';
 import { publicProfile, sessionUser } from '../lib/serialize.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { verifyPassword } from '../lib/password.js';
+import { isDemoAccount } from '../seed/data.js';
 import { clearRefreshCookie } from './auth.js';
 import { activeSessions, onlineUserIds } from '../game/registry.js';
 import { computeUserStats, matchHistory } from '../services/stats.js';
@@ -38,13 +39,19 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
   app.patch('/api/users/me', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const input = updateProfileSchema.parse(request.body);
-
     if (input.displayName) {
+      const account = await prisma.user.findUnique({
+        where: { id: me.id },
+        select: { email: true, displayName: true },
+      });
+      if (account && isDemoAccount(account.email) && input.displayName !== account.displayName)
+        throw forbidden();
       const taken = await prisma.user.findFirst({
         where: { displayName: input.displayName, id: { not: me.id } },
         select: { id: true },
       });
-      if (taken) throw conflict('error.alreadyExists', { displayName: 'error.alreadyExists' });
+      if (taken) 
+        throw conflict('error.alreadyExists', { displayName: 'error.alreadyExists' });
     }
 
     // Stamped once. A second visit to /setup must not rewrite the date the
@@ -57,7 +64,8 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         where: { id: me.id },
         select: { onboardedAt: true },
       });
-      if (current && current.onboardedAt === null) onboardedAt = new Date();
+      if (current && current.onboardedAt === null) 
+        onboardedAt = new Date();
     }
 
     // Choosing a stock avatar replaces whatever was there, including an
@@ -242,7 +250,10 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     const input = deleteAccountSchema.parse(request.body);
 
     const user = await prisma.user.findUnique({ where: { id: me.id } });
-    if (!user) throw notFound('error.notFound');
+    if (!user) 
+      throw notFound('error.notFound');
+    if (isDemoAccount(user.email))
+      throw forbidden();
 
     // Typing the display name back is what makes this deliberate rather than
     // a mis-click, and it is the only confirmation an account with no password
