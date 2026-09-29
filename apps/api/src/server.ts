@@ -25,7 +25,7 @@ import { registerRoomChannel } from './ws/room.js';
 async function build() {
   const app = Fastify({
     logger: { level: env.LOG_LEVEL },
-    trustProxy: 'loopback,uniquelocal',
+    trustProxy: (_address, hop) => hop === 0,
     bodyLimit: 1_048_576,
   });
 
