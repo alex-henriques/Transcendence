@@ -121,7 +121,7 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
       where: {
         OR: [
           { userId: me.id, friendId: id },
-          { userId: id, friendId: me.id },
+          { userId: id, friendId: me.id, status: { not: 'blocked' } },
         ],
       },
     });
@@ -144,7 +144,7 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
       where: {
         OR: [
           { userId: me.id, friendId: id },
-          { userId: id, friendId: me.id },
+          { userId: id, friendId: me.id, status: { not: 'blocked' } },
         ],
       },
     });
