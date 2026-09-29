@@ -61,9 +61,9 @@ async function build() {
     // User-supplied bytes: never let the browser guess what they are, and
     // never let one of them execute in our origin.
     setHeaders(reply) {
-      reply.setHeader('X-Content-Type-Options', 'nosniff');
-      reply.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-      reply.setHeader('Cache-Control', 'public, max-age=86400');
+      reply.header('X-Content-Type-Options', 'nosniff');
+      reply.header('Content-Security-Policy', "default-src 'none'; sandbox");
+      reply.header('Cache-Control', 'public, max-age=86400');
     },
   });
 
