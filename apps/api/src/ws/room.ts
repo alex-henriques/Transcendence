@@ -207,7 +207,14 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
 
             const room = await prisma.room.findUnique({ where: { id: session.roomId } });
             if (!room) return fail('error.notFound');
-            if (room.hostUserId !== channel.userId) return fail('error.match.hostOnly');
+            if (room.hostUserId !== channel.userId) 
+              return fail('error.match.hostOnly');
+            const matchup = await prisma.tournamentMatchup.findFirst({
+              where: { roomId: room.id },
+              select: { id: true },
+            });
+            if (matchup)
+              return fail('error.tournament.alreadyStarted');
 
             const targetId = Number(event.userId);
             if (targetId === channel.userId) return fail('error.room.cannotRemoveHost');
