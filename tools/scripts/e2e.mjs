@@ -111,10 +111,10 @@ class Player {
 
   async connect(code) {
     const ticket = await http('/api/ws/ticket', { method: 'POST', token: this.token });
-    if (ticket.status !== 200) throw new Error(`ticket failed: ${ticket.status}`);
+    if (ticket.status !== 200) 
+      throw new Error(`ticket failed: ${ticket.status}`);
 
-    this.socket = new WebSocket(`${WS_BASE}/ws/room?ticket=${ticket.json.ticket}`);
-
+    this.socket = new WebSocket(`${WS_BASE}/ws/room?ticket=${encodeURIComponent(ticket.json.ticket)}`);
     await new Promise((resolve, reject) => {
       this.socket.addEventListener('open', resolve, { once: true });
       this.socket.addEventListener('error', reject, { once: true });
