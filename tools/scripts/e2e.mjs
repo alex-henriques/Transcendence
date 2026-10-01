@@ -25,7 +25,8 @@ function check(name, condition, detail = '') {
     console.log(`  ok   ${name}`);
   } else {
     failed += 1;
-    console.log(`  FAIL ${name}${detail ? ` (${detail})` : ''}`);
+    const safeDetail = String(detail).replace(/[\r\n]/g, ' ');
+    console.log(`  FAIL ${name}${safeDetail ? ` (${safeDetail})` : ''}`);
   }
 }
 
