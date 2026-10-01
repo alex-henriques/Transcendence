@@ -182,7 +182,7 @@ class Player {
   async settle(predicate, timeoutMs = 15000) {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const hit = this.find('room:state').filter(predicate).at(-1);
+      const hit = this.find('room:state').filter((state) => predicate(state)).at(-1);
       if (hit) return hit;
       if (Date.now() > deadline) return this.find('room:state').at(-1) ?? null;
       await new Promise((resolve) => setTimeout(resolve, 100));
