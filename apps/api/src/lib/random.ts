@@ -28,6 +28,10 @@ export function shuffle<T>(items: T[]): T[] {
   return out;
 }
 
+export function randomUnit(): number {
+  return randomInt(2 ** 47) / 2 ** 47;
+}
+
 /**
  * Box-Muller. Used to sample bot reaction times from a normal distribution
  * rather than a uniform one, which is what makes them read as human.
@@ -35,7 +39,7 @@ export function shuffle<T>(items: T[]): T[] {
 export function normalSample(mean: number, stddev: number): number {
   let u = 0;
   let v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = randomUnit();
+  while (v === 0) v = randomUnit();
   return mean + stddev * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }

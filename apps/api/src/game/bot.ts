@@ -1,5 +1,5 @@
 import type { Difficulty, Vote } from '@wkb/shared';
-import { normalSample } from '../lib/random.js';
+import { normalSample, randomUnit } from '../lib/random.js';
 
 export interface BotBrain {
   label: string;
@@ -54,7 +54,7 @@ export function decideBotAnswer(params: {
   const { brain, categorySlug, difficulty, cardIsTrue, windowMs } = params;
 
   const accuracy = accuracyFor(brain, categorySlug, difficulty);
-  const answersCorrectly = Math.random() < accuracy;
+  const answersCorrectly = randomUnit() < accuracy;
   const votesTruth = answersCorrectly ? cardIsTrue : !cardIsTrue;
   const choice: Vote = votesTruth ? 'truth' : 'myth';
 
