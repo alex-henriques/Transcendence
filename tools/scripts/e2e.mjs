@@ -264,7 +264,7 @@ async function main() {
     'refresh cookie is httpOnly and SameSite=Strict',
     /HttpOnly/i.test(demoLogin.headers.get('set-cookie') ?? '') &&
       /SameSite=Strict/i.test(demoLogin.headers.get('set-cookie') ?? ''),
-      demoLogin.headers.get('set-cookie') ? 'the cookie is missing HttpOnly or SameSite=Strict' : 'no cookie',
+      demoLogin.headers.has('set-cookie') ? 'the cookie is missing HttpOnly or SameSite=Strict' : 'no cookie',
   );
 
   const noAuth = await http('/api/rooms');
