@@ -14,13 +14,13 @@ COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY tools/cardgen/package.json tools/cardgen/
-RUN npm ci --no-audit --no-fund
+RUN npm ci --ignore-scripts --no-audit --no-fund && npm rebuild prisma @prisma/engines @prisma/client
+
 
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-RUN npm run build -w @wkb/shared \
- && npx --no-install prisma generate --schema apps/api/prisma/schema.prisma \
+RUN npm run build -w @wkb/shared && npx --no-install prisma generate --schema apps/api/prisma/schema.prisma \
  && npm run build -w @wkb/api
 
 # --- runtime ----------------------------------------------------------------
