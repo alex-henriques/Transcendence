@@ -369,35 +369,39 @@ export class RoomSession {
    * the socket as a normal `error` event.
    */
   async start(requestedBy: number): Promise<string | null> {
-    if (this.match || this.starting) return 'error.match.alreadyRunning';
+    if (this.match || this.starting) 
+      return 'error.match.alreadyRunning';
     this.starting = true;
     try {
       const room = await prisma.room.findUnique({
         where: { id: this.roomId },
         include: { settings: true },
       });
-      if (!room) return 'error.notFound';
-      if (room.hostUserId !== requestedBy) return 'error.match.hostOnly';
+      if (!room) 
+        return 'error.notFound';
+      if (room.hostUserId !== requestedBy) 
+        return 'error.match.hostOnly';
 
       const humans = this.humanUserIds();
       const bots = [...this.pendingBots];
       const participants = [...humans, ...bots];
-      if (participants.length < 2) return 'error.match.needsTwoPlayers';
-      if (participants.length > room.maxPlayers) return 'error.match.roomFull';
+      if (participants.length < 2) 
+        return 'error.match.needsTwoPlayers';
+      if (participants.length > room.maxPlayers) 
+        return 'error.match.roomFull';
 
       const settings = room.settings;
       const windowMs = settings?.answerWindowMs ?? 10_000;
       const requestedCount = settings?.cardCount ?? 20;
       const categoryIds = settings?.categoryIds ?? [];
-
       const drawn = await drawMatchDeck({
         userIds: humans,
         categoryIds,
         difficulty: room.difficulty,
         count: requestedCount,
       });
-      if (drawn.length < 4) return 'error.match.notEnoughCards';
-
+      if (drawn.length < 4) 
+        return 'error.match.notEnoughCards';
       const doubleEnabled = settings?.doubleCardEnabled ?? false;
       // One double-value card per five, placed on fixed positions so every
       // player sees the same ones. It is a room modifier and not a lottery.
@@ -513,7 +517,8 @@ export class RoomSession {
       const localise = (card: { text: string; translations: { locale: string; text: string }[] }) => {
         const map = new Map<string, string>();
         map.set(sourceLocale, card.text);
-        for (const t of card.translations) map.set(t.locale, t.text);
+        for (const t of card.translations) 
+          map.set(t.locale, t.text);
         return map;
       };
 
@@ -584,7 +589,8 @@ export class RoomSession {
 
   private async serveNext(): Promise<void> {
     const m = this.match;
-    if (!m) return;
+    if (!m) 
+      return;
 
     m.position += 1;
     const entry = m.deck[m.position];
