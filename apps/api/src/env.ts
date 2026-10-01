@@ -76,6 +76,15 @@ export const oauthProviders: Record<OAuthProviderName, OAuthProviderConfig> = {
 /** Cookies are only marked Secure when the public origin actually is HTTPS. */
 export const cookieSecure = env.PUBLIC_ORIGIN.startsWith('https://');
 
+//Drops every "/" at the end of an origin, without a regular expression.
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/')
+    end -= 1;
+  return value.slice(0, end);
+}
+
+
 /**
  * Every origin this deployment answers on, `PUBLIC_ORIGIN` first.
  *
@@ -87,6 +96,6 @@ export const cookieSecure = env.PUBLIC_ORIGIN.startsWith('https://');
 export const publicOrigins: string[] = [
   env.PUBLIC_ORIGIN,
   ...env.PUBLIC_ORIGIN_ALIASES.split(',')
-    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .map((origin) => stripTrailingSlashes(origin.trim()))
     .filter((origin) => origin.length > 0),
 ].filter((origin, index, all) => all.indexOf(origin) === index);
