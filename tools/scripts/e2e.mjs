@@ -11,6 +11,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { randomInt } from 'node:crypto';
 
 const BASE = process.env.E2E_BASE ?? 'https://nginx';
 const WS_BASE = BASE.replace(/^https/, 'wss');
@@ -55,7 +56,7 @@ async function http(path, { method = 'GET', body, token, cookie } = {}) {
 }
 
 function unique(prefix) {
-  return `${prefix}${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+  return `${prefix}${Date.now().toString(36)}${randomInt(1000)}`;
 }
 
 /** A test client wrapping one room WebSocket. */
@@ -488,7 +489,7 @@ async function main() {
         player.send({
           type: 'card:vote',
           matchCardId: card.matchCardId,
-          choice: Math.random() < 0.5 ? 'truth' : 'myth',
+          choice: randomInt(2) === 0 ? 'truth' : 'myth',
           reactionMs: 600,
         });
         const ack = await player.waitFor('vote:ack', 15000).catch(() => null);

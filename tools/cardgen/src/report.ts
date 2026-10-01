@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { randomInt } from 'node:crypto';
 
 /**
  * Validation of the committed card set (spec §7 steps 9 and 10).
@@ -151,7 +152,7 @@ export async function sample(dir: string, size: number): Promise<{ ref: string; 
   }
 
   for (let i = rows.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     const a = rows[i] as (typeof rows)[number];
     const b = rows[j] as (typeof rows)[number];
     rows[i] = b;
