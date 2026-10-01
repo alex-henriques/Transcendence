@@ -331,19 +331,17 @@ export function CreateRoom(): JSX.Element {
               ['doubleCardEnabled', doubleCardEnabled, setDouble] as const,
             ]
           ).map(([key, value, setter]) => (
-            <label key={key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-rule p-3 transition hover:border-rule-strong">
+            <label key={key} className="grid cursor-pointer grid-cols-[auto_1fr] items-start gap-x-3 rounded-xl border border-rule p-3 transition hover:border-rule-strong">
               <input
                 type="checkbox"
                 checked={value}
                 onChange={(event) => setter(event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-spot"
+                className="row-span-2 mt-0.5 h-4 w-4 shrink-0 accent-spot"
               />
-              <span>
                 <span className="block text-sm font-medium text-ink">{t(`createRoom.${key}`)}</span>
                 <span className="mt-0.5 block text-xs text-muted">
                   {t(key === 'comboEnabled' ? 'createRoom.comboHint' : 'createRoom.doubleHint')}
                 </span>
-              </span>
             </label>
           ))}
         </div>
