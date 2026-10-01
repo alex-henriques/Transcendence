@@ -9,13 +9,12 @@ COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY tools/cardgen/package.json tools/cardgen/
-RUN npm ci --no-audit --no-fund
+RUN npm ci --ignore-scripts --no-audit --no-fund && npm rebuild esbuild
 
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 
-RUN npm run build -w @wkb/shared \
- && npm run build -w @wkb/web
+RUN npm run build -w @wkb/shared && npm run build -w @wkb/web
 
 # --- runtime ----------------------------------------------------------------
 #FROM nginx:1.27-alpine AS runtime
