@@ -91,9 +91,9 @@ function Header(): JSX.Element {
                 type="button"
                 onClick={() => void signOut()}
                 title={t('nav.logout')}
-                className="hidden rounded-lg p-2 text-muted transition hover:bg-surface-2 hover:text-ink sm:block"
+                className="hidden rounded-lg border border-spot bg-spot p-2 text-surface transition hover:bg-spot-strong sm:block"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M16 8l4 4-4 4M20 12H9" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
