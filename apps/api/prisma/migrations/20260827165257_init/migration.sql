@@ -1,31 +1,15 @@
--- CreateEnum
+-- Create ENUM
 CREATE TYPE "Difficulty" AS ENUM ('easy', 'medium', 'hard');
-
--- CreateEnum
 CREATE TYPE "CardForm" AS ENUM ('affirmative', 'negated');
-
--- CreateEnum
 CREATE TYPE "FriendshipStatus" AS ENUM ('pending', 'accepted', 'blocked');
-
--- CreateEnum
 CREATE TYPE "RoomVisibility" AS ENUM ('public', 'private');
-
--- CreateEnum
 CREATE TYPE "RoomMode" AS ENUM ('general', 'category');
-
--- CreateEnum
 CREATE TYPE "RoomStatus" AS ENUM ('lobby', 'playing', 'finished');
-
--- CreateEnum
 CREATE TYPE "VoteChoice" AS ENUM ('truth', 'myth');
-
--- CreateEnum
 CREATE TYPE "TournamentStatus" AS ENUM ('registration', 'running', 'finished');
-
--- CreateEnum
 CREATE TYPE "MatchupStatus" AS ENUM ('pending', 'ready', 'playing', 'finished');
 
--- CreateTable
+-- Create table
 CREATE TABLE "categories" (
     "id" SERIAL NOT NULL,
     "slug" TEXT NOT NULL,
@@ -34,7 +18,6 @@ CREATE TABLE "categories" (
     CONSTRAINT "categories_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "facts" (
     "id" SERIAL NOT NULL,
     "category_id" INTEGER NOT NULL,
@@ -47,7 +30,6 @@ CREATE TABLE "facts" (
     CONSTRAINT "facts_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "cards" (
     "id" SERIAL NOT NULL,
     "fact_id" INTEGER NOT NULL,
@@ -58,7 +40,6 @@ CREATE TABLE "cards" (
     CONSTRAINT "cards_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "card_translations" (
     "card_id" INTEGER NOT NULL,
     "locale" TEXT NOT NULL,
@@ -67,7 +48,6 @@ CREATE TABLE "card_translations" (
     CONSTRAINT "card_translations_pkey" PRIMARY KEY ("card_id","locale")
 );
 
--- CreateTable
 CREATE TABLE "users" (
     "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
@@ -85,7 +65,6 @@ CREATE TABLE "users" (
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "oauth_accounts" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
@@ -96,7 +75,6 @@ CREATE TABLE "oauth_accounts" (
     CONSTRAINT "oauth_accounts_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "refresh_tokens" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
@@ -108,7 +86,6 @@ CREATE TABLE "refresh_tokens" (
     CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "friendships" (
     "user_id" INTEGER NOT NULL,
     "friend_id" INTEGER NOT NULL,
@@ -118,7 +95,6 @@ CREATE TABLE "friendships" (
     CONSTRAINT "friendships_pkey" PRIMARY KEY ("user_id","friend_id")
 );
 
--- CreateTable
 CREATE TABLE "user_seen_facts" (
     "user_id" INTEGER NOT NULL,
     "fact_id" INTEGER NOT NULL,
@@ -127,7 +103,6 @@ CREATE TABLE "user_seen_facts" (
     CONSTRAINT "user_seen_facts_pkey" PRIMARY KEY ("user_id","fact_id")
 );
 
--- CreateTable
 CREATE TABLE "bot_profiles" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
@@ -139,7 +114,6 @@ CREATE TABLE "bot_profiles" (
     CONSTRAINT "bot_profiles_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "rooms" (
     "id" SERIAL NOT NULL,
     "code" TEXT NOT NULL,
@@ -156,7 +130,6 @@ CREATE TABLE "rooms" (
     CONSTRAINT "rooms_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "room_settings" (
     "room_id" INTEGER NOT NULL,
     "card_count" INTEGER NOT NULL DEFAULT 20,
@@ -168,7 +141,6 @@ CREATE TABLE "room_settings" (
     CONSTRAINT "room_settings_pkey" PRIMARY KEY ("room_id")
 );
 
--- CreateTable
 CREATE TABLE "matches" (
     "id" SERIAL NOT NULL,
     "room_id" INTEGER NOT NULL,
@@ -180,7 +152,6 @@ CREATE TABLE "matches" (
     CONSTRAINT "matches_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "match_cards" (
     "id" SERIAL NOT NULL,
     "match_id" INTEGER NOT NULL,
@@ -194,7 +165,6 @@ CREATE TABLE "match_cards" (
     CONSTRAINT "match_cards_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "match_players" (
     "id" SERIAL NOT NULL,
     "match_id" INTEGER NOT NULL,
@@ -209,7 +179,6 @@ CREATE TABLE "match_players" (
     CONSTRAINT "match_players_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "answers" (
     "id" SERIAL NOT NULL,
     "match_card_id" INTEGER NOT NULL,
@@ -226,7 +195,6 @@ CREATE TABLE "answers" (
     CONSTRAINT "answers_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "tournaments" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -241,7 +209,6 @@ CREATE TABLE "tournaments" (
     CONSTRAINT "tournaments_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "tournament_participants" (
     "tournament_id" INTEGER NOT NULL,
     "user_id" INTEGER NOT NULL,
@@ -252,7 +219,6 @@ CREATE TABLE "tournament_participants" (
     CONSTRAINT "tournament_participants_pkey" PRIMARY KEY ("tournament_id","user_id")
 );
 
--- CreateTable
 CREATE TABLE "tournament_matchups" (
     "id" SERIAL NOT NULL,
     "tournament_id" INTEGER NOT NULL,
@@ -268,7 +234,6 @@ CREATE TABLE "tournament_matchups" (
     CONSTRAINT "tournament_matchups_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "achievements" (
     "id" SERIAL NOT NULL,
     "slug" TEXT NOT NULL,
@@ -279,7 +244,6 @@ CREATE TABLE "achievements" (
     CONSTRAINT "achievements_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "user_achievements" (
     "user_id" INTEGER NOT NULL,
     "achievement_id" INTEGER NOT NULL,
@@ -290,159 +254,57 @@ CREATE TABLE "user_achievements" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "categories_slug_key" ON "categories"("slug");
-
--- CreateIndex
 CREATE UNIQUE INDEX "facts_source_ref_key" ON "facts"("source_ref");
-
--- CreateIndex
 CREATE INDEX "facts_category_id_difficulty_active_idx" ON "facts"("category_id", "difficulty", "active");
-
--- CreateIndex
 CREATE INDEX "cards_fact_id_is_true_idx" ON "cards"("fact_id", "is_true");
-
--- CreateIndex
 CREATE UNIQUE INDEX "cards_fact_id_form_key" ON "cards"("fact_id", "form");
-
--- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-
--- CreateIndex
 CREATE UNIQUE INDEX "users_display_name_key" ON "users"("display_name");
-
--- CreateIndex
 CREATE INDEX "users_is_bot_idx" ON "users"("is_bot");
-
--- CreateIndex
 CREATE UNIQUE INDEX "oauth_accounts_provider_provider_user_id_key" ON "oauth_accounts"("provider", "provider_user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "refresh_tokens_token_hash_key" ON "refresh_tokens"("token_hash");
-
--- CreateIndex
 CREATE INDEX "refresh_tokens_user_id_idx" ON "refresh_tokens"("user_id");
-
--- CreateIndex
 CREATE INDEX "friendships_friend_id_idx" ON "friendships"("friend_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "bot_profiles_user_id_key" ON "bot_profiles"("user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "rooms_code_key" ON "rooms"("code");
-
--- CreateIndex
 CREATE INDEX "rooms_visibility_status_idx" ON "rooms"("visibility", "status");
-
--- CreateIndex
 CREATE INDEX "matches_room_id_idx" ON "matches"("room_id");
-
--- CreateIndex
 CREATE INDEX "matches_tournament_id_idx" ON "matches"("tournament_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "match_cards_match_id_position_key" ON "match_cards"("match_id", "position");
-
--- CreateIndex
 CREATE INDEX "match_players_user_id_idx" ON "match_players"("user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "match_players_match_id_user_id_key" ON "match_players"("match_id", "user_id");
-
--- CreateIndex
 CREATE INDEX "answers_match_player_id_idx" ON "answers"("match_player_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "answers_match_card_id_match_player_id_key" ON "answers"("match_card_id", "match_player_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "tournament_matchups_room_id_key" ON "tournament_matchups"("room_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "tournament_matchups_match_id_key" ON "tournament_matchups"("match_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "tournament_matchups_tournament_id_round_slot_key" ON "tournament_matchups"("tournament_id", "round", "slot");
-
--- CreateIndex
 CREATE UNIQUE INDEX "achievements_slug_key" ON "achievements"("slug");
 
 -- AddForeignKey
 ALTER TABLE "facts" ADD CONSTRAINT "facts_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "cards" ADD CONSTRAINT "cards_fact_id_fkey" FOREIGN KEY ("fact_id") REFERENCES "facts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "card_translations" ADD CONSTRAINT "card_translations_card_id_fkey" FOREIGN KEY ("card_id") REFERENCES "cards"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "friendships" ADD CONSTRAINT "friendships_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "friendships" ADD CONSTRAINT "friendships_friend_id_fkey" FOREIGN KEY ("friend_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_seen_facts" ADD CONSTRAINT "user_seen_facts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_seen_facts" ADD CONSTRAINT "user_seen_facts_fact_id_fkey" FOREIGN KEY ("fact_id") REFERENCES "facts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "bot_profiles" ADD CONSTRAINT "bot_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "rooms" ADD CONSTRAINT "rooms_host_user_id_fkey" FOREIGN KEY ("host_user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "rooms" ADD CONSTRAINT "rooms_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "room_settings" ADD CONSTRAINT "room_settings_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "matches" ADD CONSTRAINT "matches_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "matches" ADD CONSTRAINT "matches_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "match_cards" ADD CONSTRAINT "match_cards_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "match_cards" ADD CONSTRAINT "match_cards_card_id_fkey" FOREIGN KEY ("card_id") REFERENCES "cards"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "match_players" ADD CONSTRAINT "match_players_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "match_players" ADD CONSTRAINT "match_players_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "answers" ADD CONSTRAINT "answers_match_card_id_fkey" FOREIGN KEY ("match_card_id") REFERENCES "match_cards"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "answers" ADD CONSTRAINT "answers_match_player_id_fkey" FOREIGN KEY ("match_player_id") REFERENCES "match_players"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "tournament_matchups" ADD CONSTRAINT "tournament_matchups_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "tournament_matchups" ADD CONSTRAINT "tournament_matchups_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_achievement_id_fkey" FOREIGN KEY ("achievement_id") REFERENCES "achievements"("id") ON DELETE CASCADE ON UPDATE CASCADE;
