@@ -12,11 +12,11 @@ export interface SessionUser {
   xpForNextLevel: number;
   createdAt: string;
   hasPassword: boolean;
-  /// False until the first-run setup screen has been completed or skipped.
+  //False until the first-run setup screen has been completed or skipped.
   onboarded: boolean;
 }
 
-/** The shape returned to the signed-in user about themselves. */
+// Response shape for the signed in user's own data
 export function sessionUser(user: {
   id: number;
   email: string;
@@ -46,7 +46,7 @@ export function sessionUser(user: {
   };
 }
 
-/** The shape shown to everyone else. Never includes the email. */
+//What other users see. Never include the email
 export function publicProfile(user: {
   id: number;
   displayName: string;

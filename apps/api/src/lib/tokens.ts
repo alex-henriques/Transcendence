@@ -38,11 +38,8 @@ export async function verifyAccessToken(jwt: string): Promise<AccessClaims | nul
   }
 }
 
-/**
- * Refresh tokens are opaque random strings, not JWTs, so that a logout or a
- * password change can revoke them server-side. Only a keyed hash is stored:
- * the database alone is not enough to mint a session.
- */
+/*Refresh tokens are random strings, not JWTs, so a logout or a password change can revoke them on the server.
+Only a keyed hash is stored, so a leaked database cannot be used to create a session */
 function fingerprint(raw: string): string {
   return createHmac('sha256', env.JWT_REFRESH_SECRET).update(raw).digest('hex');
 }
@@ -59,26 +56,23 @@ export async function issueRefreshToken(userId: number): Promise<string> {
   return raw;
 }
 
-/**
- * Single-use rotation: the presented token is revoked and a fresh one issued.
- * Returns null when the token is unknown, expired or already revoked.
- */
+/* Swaps a refreshed token for a new one. The old token is revoked, so each token works only once.
+Return null if the token is unknown, expired or already taken.*/
 export async function rotateRefreshToken(
   raw: string,
 ): Promise<{ userId: number; refreshToken: string } | null> {
   const hash = fingerprint(raw);
   const record = await prisma.refreshToken.findUnique({ where: { tokenHash: hash } });
-
-  if (!record || record.revokedAt || record.expiresAt.getTime() < Date.now()) return null;
-
+  if (!record || record.revokedAt || record.expiresAt.getTime() < Date.now()) 
+    return null;
   const rotated = await prisma.$transaction(async (tx) => {
     const claimed = await tx.refreshToken.updateMany({
       where: { id: record.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    // Lost the race against a concurrent refresh: do not mint a second session.
-    if (claimed.count === 0) return null;
-
+    // Another refresh got there first, so don't create a second session
+    if (claimed.count === 0) 
+      return null;
     const next = token(48);
     await tx.refreshToken.create({
       data: {
@@ -89,17 +83,14 @@ export async function rotateRefreshToken(
     });
     return next;
   });
-
   if (!rotated) 
     return null;
   return { userId: record.userId, refreshToken: rotated };
 }
 
-// True when this token was revoked in the last few seconds.
-//every tab shares one refresh cookie. when two tabs renew at the same time
-// the second one presents the token the first has just rotated away.
-//that's not a stolen token and deleting the cookie in answer would delete the 
-//fresh one the first tab has just received.
+/* True when this token was revoked in the last few seconds. Every tab shares one refresh cookie, when two tabs renew at the same time
+the second one presents the token the first has just rotated away. That's not a stolen token and deleting the cookie in answer would delete the 
+fresh one the first tab has just received.*/
 export async function wasJustRotated(raw: string): Promise<boolean> {
   const record = await prisma.refreshToken.findUnique({
     where: { tokenHash: fingerprint(raw) }
@@ -123,7 +114,7 @@ export async function revokeAllForUser(userId: number): Promise<void> {
   });
 }
 
-/** Constant-time compare for the OAuth state parameter. */
+//Compares the OAuth state parameter in constant time.
 export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);

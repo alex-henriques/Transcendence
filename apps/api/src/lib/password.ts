@@ -1,11 +1,8 @@
 import { hash, verify } from '@node-rs/argon2';
 
-/**
- * Argon2id with the parameters OWASP currently recommends for interactive
- * logins (19 MiB, 2 passes, 1 lane). `@node-rs/argon2` salts every hash with
- * 16 random bytes and stores the salt inside the encoded string, so there is
- * no separate salt column.
- */
+/* Password hashing with Argon2id, using the settings OWASP recommends for logins.
+'@node-rs/argon2' adds a random salt (random value mixed into a password before it's hashed) to each hash and stores it in the hash string, 
+so there's no salt column */
 const OPTIONS = {
   memoryCost: 19_456,
   timeCost: 2,

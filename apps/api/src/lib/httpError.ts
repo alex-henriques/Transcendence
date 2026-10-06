@@ -1,7 +1,5 @@
-/**
- * `message` is always an i18n key so the browser can render it in the user's
- * language. Never put a raw database or provider message in here.
- */
+/* 'message' is always an i18n key so the browser can render it in the user's language. 
+ Never put a raw database or provider message in here.*/
 export class HttpError extends Error {
   readonly statusCode: number;
   readonly code: string;
@@ -12,7 +10,8 @@ export class HttpError extends Error {
     this.name = 'HttpError';
     this.statusCode = statusCode;
     this.code = code;
-    if (fields) this.fields = fields;
+    if (fields) 
+      this.fields = fields;
   }
 }
 
