@@ -3,24 +3,16 @@ import { AVATAR_PRESETS, presetFromStored, presetToStored, type AvatarPreset } f
 import { AVATAR_ART } from '../theme/avatars.js';
 import { Avatar } from './ui.js';
 
-/**
- * Sixteen stock avatars, grouped by the suit each belongs to.
- *
- * A radiogroup rather than a grid of buttons: these are one choice among many,
- * which is what a radio group means, and it gets arrow-key navigation for free
- * on a control with sixteen options.
- *
- * The "no stock avatar" option is first and is not a blank tile. It shows the
- * generated initials the account would fall back to, because that is a real
- * choice with a real appearance, not an absence.
- */
+/* Sixteen stock avatars, grouped by suit, in a radiogroup (one choice among
+many, with arrow key navigation built in). The first option is "no stock
+avatar" and shows the generated initials the account falls back to */
 export function AvatarPicker({
   value,
   displayName,
   onChange,
   disabled = false,
 }: {
-  /** The stored avatar value, which may be an upload, a preset, or null. */
+  //The stored avatar value, which can be an upload, a preset, or null
   value: string | null;
   displayName: string;
   onChange: (next: AvatarPreset | null) => void;
@@ -28,13 +20,12 @@ export function AvatarPicker({
 }): JSX.Element {
   const { t } = useTranslation();
   const current = presetFromStored(value);
-
   const bySuit = new Map<string, AvatarPreset[]>();
-  for (const preset of AVATAR_PRESETS) {
+  for (const preset of AVATAR_PRESETS) 
+  {
     const suit = AVATAR_ART[preset].suit;
     bySuit.set(suit, [...(bySuit.get(suit) ?? []), preset]);
   }
-
   const tile = (selected: boolean, children: JSX.Element, label: string, onPick: () => void, key: string) => (
     <button
       key={key}
@@ -53,16 +44,11 @@ export function AvatarPicker({
       {children}
     </button>
   );
-
   return (
     <div role="radiogroup" aria-label={t('profile.avatarChoose')} className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {tile(
-          current === null,
-          <Avatar name={displayName} size={40} />,
-          t('profile.avatarNone'),
-          () => onChange(null),
-          'none',
+          current === null, <Avatar name={displayName} size={40} />, t('profile.avatarNone'), () => onChange(null), 'none',
         )}
       </div>
 
@@ -79,11 +65,7 @@ export function AvatarPicker({
           <div className="flex flex-wrap gap-2">
             {presets.map((preset) =>
               tile(
-                current === preset,
-                <Avatar name={displayName} src={presetToStored(preset)} size={40} />,
-                t(`avatars.${preset}`),
-                () => onChange(preset),
-                preset,
+                current === preset, <Avatar name={displayName} src={presetToStored(preset)} size={40} />, t(`avatars.${preset}`),() => onChange(preset), preset,
               ),
             )}
           </div>

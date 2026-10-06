@@ -1,19 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { withTranslation, type WithTranslation } from 'react-i18next';
 
-/**
- * The last line before a white screen.
- *
- * Without one of these a single thrown render turns the whole app into a blank
- * page with the error only in the console, which is indistinguishable from the
- * site being down. React offers no hook equivalent, so this is the one class
- * component in the codebase.
- *
- * It deliberately does not try to recover in place. A component that threw
- * once will usually throw again on the same state, so the way out is a reload,
- * which is also the only honest thing to offer someone whose interface just
- * stopped working.
- */
+/*  Error boundary; the last line before a white screen. Without it, one
+render error blanks the whole app and looks like the site is down. 
+React has no hook for this, it offers a reload instead of recovering in place, 
+since the same state would likely throw again.*/
 interface Props extends WithTranslation {
   children: ReactNode;
 }
@@ -36,9 +27,9 @@ class Boundary extends Component<Props, State> {
   }
 
   override render(): ReactNode {
-    if (!this.state.failed) return this.props.children;
+    if (!this.state.failed) 
+      return this.props.children;
     const { t } = this.props;
-
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-paper px-4 text-center">
         {/* Three cards on the table at broken angles, drawn from the same

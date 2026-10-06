@@ -1,11 +1,5 @@
-/**
- * Thin fetch wrapper.
- *
- * The access token lives in memory only, never in localStorage where any
- * injected script could read it. Persistence is handled by the httpOnly
- * refresh cookie, which JavaScript cannot touch.
- */
-
+/* The access token is stored in memory (not localStorage), so injected scripts can't read it. 
+The httpOnly refresh cookie keeps the user signed in.*/
 let accessToken: string | null = null;
 let refreshing: Promise<boolean> | null = null;
 let onSessionLost: (() => void) | null = null;
@@ -45,13 +39,11 @@ async function parseError(response: Response): Promise<ApiError> {
   try {
     const payload = (await response.json()) as { error?: ApiErrorBody };
     if (payload.error?.code) return new ApiError(response.status, payload.error);
-  } catch {
-    // Non-JSON error body (a proxy error page, for instance).
-  }
+  } catch {} // Not a JSON error; probably an HTML page from a proxy.
   return new ApiError(response.status, { code: 'error.internal' });
 }
 
-/** Exchanges the refresh cookie for a new access token. At most one in flight. */
+// Exchanges the refresh cookie for a new access token
 async function refreshSession(): Promise<boolean> {
   refreshing ??= (async () => {
     try {
@@ -59,14 +51,14 @@ async function refreshSession(): Promise<boolean> {
         method: 'POST',
         credentials: 'same-origin',
       });
-      if (!response.ok) return false;
+      if (!response.ok) 
+        return false;
       const payload = (await response.json()) as { accessToken: string };
       accessToken = payload.accessToken;
       return true;
     } catch {
       return false;
-    } finally {
-      // Cleared on the next tick so concurrent callers all see this result.
+    } finally { // Cleared on the next tick so concurrent callers all see this result.
       queueMicrotask(() => {
         refreshing = null;
       });
@@ -78,25 +70,26 @@ async function refreshSession(): Promise<boolean> {
 interface RequestOptions {
   method?: string;
   body?: unknown;
-  /** Set for multipart uploads, where the browser must pick the boundary. */
+  // Multipart form. Browser need to set the boundary.
   formData?: FormData;
   signal?: AbortSignal;
-  /** Internal: prevents a refresh loop. */
+  // Internal: prevents a refresh loop
   retry?: boolean;
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
+  if (accessToken) 
+    headers.Authorization = `Bearer ${accessToken}`;
   let body: BodyInit | undefined;
-  if (options.formData) {
+  if (options.formData) 
+  {
     body = options.formData;
-  } else if (options.body !== undefined) {
+  } else if (options.body !== undefined) 
+  {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(options.body);
   }
-
   let response: Response;
   try {
     response = await fetch(path, {
@@ -109,10 +102,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   } catch {
     throw new ApiError(0, { code: 'error.network' });
   }
-
-  // One silent refresh, then one retry. A second 401 means the session is gone.
-  // The auth endpoints are excluded: refreshing in response to a failed
-  // refresh would just make the same request twice.
+/* Try a silent refresh, then retry once, if it's still a 401 the session is gone.
+Skip auth endpoints, refreshing after a failed refresh would just repeat the request*/
   const isAuthEndpoint = path.startsWith('/api/auth/refresh') || path.startsWith('/api/auth/session');
   if (response.status === 401 && !options.retry && !isAuthEndpoint) {
     const renewed = await refreshSession();
@@ -120,10 +111,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     accessToken = null;
     onSessionLost?.();
   }
-
-  if (!response.ok) throw await parseError(response);
-  if (response.status === 204) return undefined as T;
-
+  if (!response.ok) 
+    throw await parseError(response);
+  if (response.status === 204) 
+    return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -136,15 +127,8 @@ export const api = {
     request<T>(path, body === undefined ? { method: 'DELETE' } : { method: 'DELETE', body }),
   upload: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: 'POST', formData }),
-  /**
-   * Fetches a file and hands it to the browser as a download.
-   *
-   * A plain `<a download>` cannot be used: the export is behind the access
-   * token, which lives in memory and never in a URL, so the request has to go
-   * through `request` like any other and the response is turned into a blob
-   * here. The object URL is revoked immediately; the download has already
-   * started by then.
-   */
+  /* Download  file through 'request' so the in memory access token is sent (a plain '<a downlaod>'
+can't do that), then saves the response  as a blob*/
   download: async (path: string, fallbackName: string): Promise<void> => {
     const send = () => {
       const headers: Record<string, string> = {};
@@ -159,7 +143,6 @@ export const api = {
       throw await parseError(response);
     const disposition = response.headers.get('Content-Disposition') ?? '';
     const named = /filename="([^"]+)"/.exec(disposition);
-
     const url = URL.createObjectURL(await response.blob());
     const link = document.createElement('a');
     link.href = url;
