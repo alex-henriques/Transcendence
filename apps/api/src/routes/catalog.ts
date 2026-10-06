@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 import { requireAuth } from '../plugins/auth.js';
 
-/** Reference data the room-creation and lobby screens need. */
+// Reference data the room creation and lobby screens need
 export async function catalogRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/catalog/categories', { preHandler: requireAuth }, async () => {
     const rows = await prisma.$queryRaw<
@@ -20,7 +20,6 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
       GROUP BY c.id, c.slug, c.name
       ORDER BY c.name ASC
     `);
-
     return {
       categories: rows.map((r) => ({
         id: r.id,
@@ -30,13 +29,11 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
       })),
     };
   });
-
   app.get('/api/catalog/bots', { preHandler: requireAuth }, async () => {
     const bots = await prisma.botProfile.findMany({
       include: { user: { select: { id: true, displayName: true, avatarUrl: true } } },
       orderBy: { reactionMsMean: 'asc' },
     });
-
     return {
       bots: bots.map((b) => {
         const accuracy = b.accuracyByCategory as Record<string, number>;
@@ -45,7 +42,6 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
           .map(([, value]) => value);
         const average =
           values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : (accuracy['_default'] ?? 0.6);
-
         return {
           profileId: b.id,
           userId: b.user.id,
@@ -54,7 +50,7 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
           label: b.label,
           averageAccuracy: Number(average.toFixed(2)),
           reactionMsMean: b.reactionMsMean,
-          /** Strongest categories, so the lobby can describe the opponent. */
+          //Strongest categories so the lobby can describe the opponent.
           strengths: Object.entries(accuracy)
             .filter(([key]) => key !== '_default')
             .sort((a, b2) => b2[1] - a[1])
@@ -64,15 +60,13 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
       }),
     };
   });
-
-  /** Card-set size, used by the customization screen and quoted in the README. */
+ // Card set size, used by the customisation screen (check README.md)
   app.get('/api/catalog/cards', { preHandler: requireAuth }, async () => {
     const [facts, cards, translations] = await Promise.all([
       prisma.facts.count({ where: { active: true } }),
       prisma.card.count(),
       prisma.cardTranslation.groupBy({ by: ['locale'], _count: { locale: true } }),
     ]);
-
     return {
       facts,
       cards,

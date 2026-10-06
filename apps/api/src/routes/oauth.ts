@@ -15,23 +15,13 @@ import { issueRefreshToken } from '../lib/tokens.js';
 import { setRefreshCookie } from './auth.js';
 import { HttpError, badRequest, notFound } from '../lib/httpError.js';
 
-/**
- * OAuth 2.0 authorization-code flow (module 8).
- *
- * The callback never puts a token in the redirect URL. It sets the refresh
- * cookie and bounces to /auth/callback, where the SPA does an ordinary
- * `POST /api/auth/refresh` to obtain its access token, which is the same path
- * a returning visitor takes.
- */
-
+/* OAuth 2.0 authorization code flow (module 8)
+The callback never puts a token in the redirect URL. It sets the refresh cookie and redirects to /auth/callback, where the SPA calls
+'POST /api/auth/refresh' to get its access token, just like a returning visitor would.*/
 const STATE_COOKIE = 'wkb_oauth_state';
 const providerSchema = z.enum(['google', 'github', '42']);
-
-/**
- * Everything the authorization-code flow needs that differs per provider. Only
- * the profile call is left as a branch below, because each one returns a
- * different shape and there is nothing to table-drive.
- */
+/* Everything the authorization code flow needs that differs per provider. Only the profile call is left as a branch below, because each one returns a
+different shape and there is nothing to table-drive.*/
 const ENDPOINTS: Record<
   OAuthProviderName,
   { authorize: string; token: string; scope: string; extra?: Record<string, string> }
@@ -50,9 +40,8 @@ const ENDPOINTS: Record<
   '42': {
     authorize: 'https://api.intra.42.fr/oauth/authorize',
     token: 'https://api.intra.42.fr/oauth/token',
-    // `public` is the whole of it: an id, an email, a login and an avatar.
-    // The other scopes on the intra form would be asking for permissions this
-    // application has no use for.
+    /* 'public' is the whole thing,  an id, an email, a login and an avatar. The other scopes on the intra form would be asking for permissions 
+    this application has no use for. */
     scope: 'public',
     extra: { response_type: 'code' },
   },
@@ -65,29 +54,17 @@ interface ProviderProfile {
   avatarUrl: string | null;
 }
 
-/**
- * Configured origins indexed by the Host header that should select them, with
- * and without the port, since a proxy may or may not pass it through.
- * `PUBLIC_ORIGIN` is first in `publicOrigins`, so it wins any collision.
- */
+/* Maps Host header values (with and without port) to configured origins. 'PUBLIC_ORIGIN' is first in 'publicOrigins', so it wins any collision */
 const ORIGIN_BY_HOST = new Map<string, string>();
-for (const origin of [...publicOrigins].reverse()) {
+for (const origin of [...publicOrigins].reverse()) 
+{
   const url = new URL(origin);
   ORIGIN_BY_HOST.set(url.host, origin);
   ORIGIN_BY_HOST.set(url.hostname, origin);
 }
 
-/**
- * The origin to send this particular visitor back to.
- *
- * The deployment can answer on more than one address, typically a LAN address
- * for other machines and localhost on the machine it runs on, and a visitor
- * has to come back to the address they left from or their cookies belong to a
- * different origin. The Host header selects which one, but only by looking it
- * up in the configured list, and the value returned is the configured string
- * rather than anything rebuilt from the request. Trusting the header itself
- * would let a forged one choose where the authorization code is delivered.
- */
+/* The origin to send this visitor back to so their cookies stay on the address they came from. The Host header only selects from the configured list,
+it returns the configured string and never the header itself. A forged header cannot redirect the authorisation code*/
 function originFor(request: FastifyRequest): string {
   const host = request.headers.host;
   if (!host) 
@@ -124,13 +101,11 @@ async function exchangeCode(
       client_id: config.clientId,
       client_secret: config.clientSecret,
       code,
-      // Must be byte-for-byte the value sent to the authorize endpoint, which
-      // is why the origin is carried through rather than recomputed.
+      // Must be byte for byte the value sent to the authorize endpoint, which is why the origin is carried through rather than recomputed
       redirect_uri: redirectUri(provider, origin),
       grant_type: 'authorization_code',
     }),
   });
-
   if (!response.ok) 
     throw badRequest('error.oauth.exchangeFailed');
   const payload = (await response.json()) as { access_token?: string };
@@ -148,7 +123,8 @@ async function fetchProfile(
     Accept: 'application/json',
     'User-Agent': 'wkb-ft-transcendence',
   };
-  if (provider === 'google') {
+  if (provider === 'google') 
+  {
     const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers });
     if (!response.ok) 
       throw badRequest('error.oauth.profileFailed');
@@ -159,7 +135,8 @@ async function fetchProfile(
       name?: string;
       picture?: string;
     };
-    if (!profile.email || profile.email_verified !== true) {
+    if (!profile.email || profile.email_verified !== true) 
+    {
       throw badRequest('error.oauth.noEmail');
     }
     return {
@@ -169,8 +146,8 @@ async function fetchProfile(
       avatarUrl: profile.picture ?? null,
     };
   }
-
-  if (provider === '42') {
+  if (provider === '42') 
+  {
     const response = await fetch('https://api.intra.42.fr/v2/me', { headers });
     if (!response.ok) 
       throw badRequest('error.oauth.profileFailed');
@@ -185,17 +162,13 @@ async function fetchProfile(
     return {
       providerUserId: String(profile.id),
       email: profile.email.toLowerCase(),
-      // The login rather than `displayname`, which is the student's real name.
-      // Display names are public here — they sit on the leaderboard and in
-      // every room — and an intra login is already the handle 42 students are
-      // known by, so it is the one that belongs on a scoreboard.
+      /* Use the login instead 'displayname', which is the student's real name. Display names are public here (leaderboard, every room) 
+      and an intra login is already the handle 42 students are known by, so it is the one that belongs on a scoreboard */
       displayName: profile.login,
-      // `versions.medium` is 96px. The largest avatar this interface draws is
-      // 80px, and `link` is the untouched original, which can be a megabyte.
+      // 'versions.medium' is 96px. The largest avatar this interface draws is 80px, and 'link' is the full size original, which can be a megabyte.
       avatarUrl: profile.image?.versions?.medium ?? profile.image?.link ?? null,
     };
   }
-
   const response = await fetch('https://api.github.com/user', { headers });
   if (!response.ok) 
     throw badRequest('error.oauth.profileFailed');
@@ -207,10 +180,12 @@ async function fetchProfile(
     email?: string | null;
   };
   let email = profile.email ?? null;
-  if (!email) {
+  if (!email) 
+  {
     // GitHub hides the address unless it is public; ask for the verified one.
     const emailResponse = await fetch('https://api.github.com/user/emails', { headers });
-    if (emailResponse.ok) {
+    if (emailResponse.ok) 
+    {
       const emails = (await emailResponse.json()) as {
         email: string;
         primary: boolean;
@@ -229,11 +204,12 @@ async function fetchProfile(
   };
 }
 
-/** Display names are unique; a taken one gets a numeric suffix. */
+// Display names are unique; a taken one gets a numeric suffix.
 async function uniqueDisplayName(preferred: string): Promise<string> {
   const base = preferred.trim().slice(0, 20).replace(/[^\p{L}\p{N} _.-]/gu, '') || 'player';
   const padded = base.length >= 3 ? base : `${base}_player`.slice(0, 20);
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let attempt = 0; attempt < 50; attempt += 1) 
+  {
     const candidate = attempt === 0 ? padded : `${padded.slice(0, 20)}${attempt}`;
     const taken = await prisma.user.findUnique({ where: { displayName: candidate } });
     if (!taken) 
@@ -242,11 +218,7 @@ async function uniqueDisplayName(preferred: string): Promise<string> {
   return `player_${token(4)}`;
 }
 
-/**
- * Links the provider identity to an account: an existing link wins, then a
- * matching email (so signing in with Google on an account created by password
- * is a link and not a duplicate), and otherwise a new account is created.
- */
+// Finds the account for a provider identity: existing link, then matching email, then a new account
 async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile): Promise<number> {
   const linked = await prisma.oAuthAccount.findUnique({
     where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } },
@@ -254,7 +226,8 @@ async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile
   if (linked) 
     return linked.userId;
   const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
-  if (byEmail) {
+  if (byEmail) 
+  {
     if (byEmail.passwordHash != null || byEmail.isBot)
       throw badRequest('error.oauth.accountExists');
     await prisma.oAuthAccount.create({
@@ -266,7 +239,7 @@ async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile
     data: {
       email: profile.email,
       displayName: await uniqueDisplayName(profile.displayName),
-      // No password: the account is provider-only until the user sets one.
+      // No password; the account is provider only until the user sets one 
       passwordHash: null,
       avatarUrl: profile.avatarUrl,
       locale: DEFAULT_LOCALE,

@@ -9,12 +9,10 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
     const [stats, history] = await Promise.all([computeUserStats(me.id), matchHistory(me.id, 25)]);
     return { stats, history };
   });
-
   app.get('/api/stats/leaderboard', { preHandler: requireAuth }, async () => ({
     leaderboard: await leaderboard(25),
   }));
-
-  /** Every achievement, with the ones this user has unlocked marked. */
+  //Every achievement, with the ones this user has unlocked marked
   app.get('/api/stats/achievements', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const [all, mine] = await Promise.all([
@@ -22,7 +20,6 @@ export async function statsRoutes(app: FastifyInstance): Promise<void> {
       prisma.userAchievement.findMany({ where: { userId: me.id } }),
     ]);
     const unlocked = new Map(mine.map((u) => [u.achievementId, u.unlockedAt]));
-
     return {
       achievements: all.map((a) => ({
         slug: a.slug,
