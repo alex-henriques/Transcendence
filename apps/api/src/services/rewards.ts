@@ -3,12 +3,9 @@ import { levelFromXp } from '@wkb/shared';
 import { prisma } from '../db.js';
 import { computeUserStats } from './stats.js';
 
-/**
- * Gamification (module 10): XP with levels, achievements, and the leaderboard
- * that both feed. Everything is persisted; nothing is recomputed from a cache.
- */
+/*XP with levels, achievements, and the leaderboard they both feed. Everything is saved to the database, and nothing is recalculated from a cache
+Showing up earns a little XP and placing well earns more */
 
-/** Turning up is worth something; placing well is worth more. */
 const XP_FOR_PLAYING = 20;
 const XP_PER_100_POINTS = 10;
 const XP_BY_RANK: Record<number, number> = { 1: 50, 2: 25, 3: 10 };
@@ -32,15 +29,11 @@ interface Criteria {
     | 'category_correct';
   threshold?: number;
   categorySlug?: string;
-  /** For `accuracy`: minimum answers before the rule can fire. */
+  //For 'accuracy', the minimum number of answers before the rule can trigger
   minAnswers?: number;
 }
 
-/**
- * Achievement rules are data, not code: each row in `achievements` carries a
- * `criteria` JSON blob that this function knows how to read. Adding a badge is
- * a seed change, not a deploy.
- */
+/* Achievement rules are in the 'achievements.criteria' JSON, which this function reads. Adding a badge means changing the seed, not deploying*/
 async function unlockedSlugs(params: {
   userId: number;
   matchId: number;
@@ -54,7 +47,6 @@ async function unlockedSlugs(params: {
       select: { isCorrect: true, acceptedReactionMs: true },
     }),
   ]);
-
   const answeredEverything = matchAnswers.length > 0;
   const perfectMatch = answeredEverything && matchAnswers.every((a) => a.isCorrect);
   const fastestThisMatch = matchAnswers
@@ -63,14 +55,12 @@ async function unlockedSlugs(params: {
       (best, a) => (best === null ? a.acceptedReactionMs : Math.min(best, a.acceptedReactionMs)),
       null,
     );
-
   const earned: string[] = [];
-
-  for (const achievement of achievements) {
+  for (const achievement of achievements) 
+  {
     const criteria = achievement.criteria as unknown as Criteria;
     const threshold = criteria.threshold ?? 0;
     let met = false;
-
     switch (criteria.kind) {
       case 'matches_played':
         met = stats.matchesPlayed >= threshold;
@@ -104,31 +94,25 @@ async function unlockedSlugs(params: {
       default:
         met = false;
     }
-
-    if (met) earned.push(achievement.slug);
+    if (met) 
+      earned.push(achievement.slug);
   }
-
   return earned;
 }
 
-/**
- * Awards XP and achievements for a finished match.
- * Bots are skipped: they have no progression to speak of.
- */
+// Awards XP and achievements for a finished match. Bots aren't included
 export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> {
   const players = await prisma.matchPlayer.findMany({
     where: { matchId },
     include: { user: { select: { id: true, isBot: true, xp: true } } },
   });
-
   const awards: MatchAward[] = [];
-
-  for (const player of players) {
-    if (player.user.isBot) continue;
+  for (const player of players) 
+  {
+    if (player.user.isBot) 
+      continue;
     const xpGained = xpForMatch({ score: player.score, rank: player.finalRank });
-    // The database adds the XP itself, rather than us writing a total worked
-    // out from a value read earlier. Two matches ending at the same moment
-    // would otherwise both start from the same XP, and one reward would be lost.
+    // The database adds the XP itself
     const updated = await prisma.user.update({
       where: { id: player.userId },
       data: { xp: { increment: xpGained } },
@@ -148,16 +132,18 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
       level: levelAfter,
     });
     const newlyUnlocked: MatchAward['achievements'] = [];
-    if (slugs.length > 0) {
+    if (slugs.length > 0) 
+    {
       const rows = await prisma.achievement.findMany({ where: { slug: { in: slugs } } });
-      for (const achievement of rows) {
-        // `createMany` + skipDuplicates would hide which ones are new, and the
-        // client wants to celebrate exactly the new ones.
+      for (const achievement of rows) 
+      {
+        // 'createMany' + skipDuplicates would hide which ones are new, and the client wants to celebrate exactly the new ones.
         const created = await prisma.userAchievement.createMany({
           data: [{ userId: player.userId, achievementId: achievement.id }],
           skipDuplicates: true,
         });
-        if (created.count > 0) {
+        if (created.count > 0) 
+        {
           newlyUnlocked.push({
             slug: achievement.slug,
             name: achievement.name,
@@ -166,7 +152,6 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
         }
       }
     }
-
     awards.push({
       userId: player.userId,
       xpGained,
@@ -175,6 +160,5 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
       achievements: newlyUnlocked,
     });
   }
-
   return awards;
 }

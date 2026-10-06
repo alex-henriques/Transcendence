@@ -1,11 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 
-/**
- * Everything the statistics module (and the achievement rules) needs about one
- * player, derived from `answers` and `match_players` rather than kept in
- * denormalised counters that could drift.
- */
+//Player stats for the statistics module and achievement rules, calculated from 'answers' and 'match_players' so there aren't counters to drift out of sync
 export interface CategoryAccuracy {
   slug: string;
   name: string;
@@ -43,7 +39,6 @@ export interface UserStats {
 
 export async function computeUserStats(userId: number): Promise<UserStats> {
   const finished = { match: { endedAt: { not: null } } } as const;
-
   const [players, answerAgg, correctCount, fastest, byCategory] = await Promise.all([
     prisma.matchPlayer.findMany({
       where: { userId, ...finished },
@@ -72,14 +67,12 @@ export async function computeUserStats(userId: number): Promise<UserStats> {
       ORDER BY count(*) DESC
     `),
   ]);
-
   const matchesPlayed = players.length;
   const matchesWon = players.filter((p) => p.finalRank === 1).length;
   const podiums = players.filter((p) => p.finalRank !== null && p.finalRank <= 3).length;
   const totalScore = players.reduce((sum, p) => sum + p.score, 0);
   const bestScore = players.reduce((best, p) => Math.max(best, p.score), 0);
   const bestCombo = players.reduce((best, p) => Math.max(best, p.comboMax), 0);
-
   return {
     matchesPlayed,
     matchesWon,
@@ -157,10 +150,7 @@ export interface LeaderboardRow {
   accuracy: number;
 }
 
-/**
- * Ranked by total score across finished matches. Bots are excluded: a
- * leaderboard the house can win is not a leaderboard.
- */
+// Ranked by total score across finished matches. Bots are excluded.
 export async function leaderboard(take = 25): Promise<LeaderboardRow[]> {
   const rows = await prisma.$queryRaw<
     {
@@ -195,7 +185,6 @@ export async function leaderboard(take = 25): Promise<LeaderboardRow[]> {
     ORDER BY total_score DESC, matches_won DESC, u.xp DESC
     LIMIT ${take}
   `);
-
   return rows.map((r) => {
     const answers = Number(r.answers);
     return {

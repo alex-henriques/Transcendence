@@ -6,13 +6,8 @@ import { drawMatchDeck } from '../game/draw.js';
 import { decideBotAnswer, type BotBrain } from '../game/bot.js';
 import { grantMatchRewards } from './rewards.js';
 
-/**
- * Single-elimination bracket (module 9).
- *
- * The bracket is stored, not computed: every pairing is a row in
- * `tournament_matchups`, so "who plays whom, and in what order" is a query
- * rather than a seeding formula the UI has to re-derive.
- */
+/*The bracket is stored, not computed: every pairing is a row in 'tournament_matchups',
+so "who plays whom, and in what order" is a query rather than a seeding formula the UI has to rederive.*/
 
 export interface BracketMatchup {
   id: number;
@@ -47,26 +42,26 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
       matchups: { orderBy: [{ round: 'asc' }, { slot: 'asc' }] },
     },
   });
-  if (!tournament) return null;
-
+  if (!tournament) 
+    return null;
   const userIds = new Set<number>();
   for (const m of tournament.matchups) {
-    if (m.playerAId) userIds.add(m.playerAId);
-    if (m.playerBId) userIds.add(m.playerBId);
+    if (m.playerAId) 
+      userIds.add(m.playerAId);
+    if (m.playerBId) 
+      userIds.add(m.playerBId);
   }
   const users = await prisma.user.findMany({
     where: { id: { in: [...userIds] } },
     select: { id: true, displayName: true, avatarUrl: true, isBot: true },
   });
   const byId = new Map(users.map((u) => [u.id, u]));
-
   const roomIds = tournament.matchups.flatMap((m) => (m.roomId ? [m.roomId] : []));
   const rooms = await prisma.room.findMany({
     where: { id: { in: roomIds } },
     select: { id: true, code: true },
   });
   const roomById = new Map(rooms.map((r) => [r.id, r.code]));
-
   const matchIds = tournament.matchups.flatMap((m) => (m.matchId ? [m.matchId] : []));
   const scores = await prisma.matchPlayer.findMany({
     where: { matchId: { in: matchIds } },
@@ -74,10 +69,10 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
   });
   const scoreKey = (matchId: number, userId: number) => `${matchId}:${userId}`;
   const scoreMap = new Map(scores.map((s) => [scoreKey(s.matchId, s.userId), s.score]));
-
   const totalRounds = Math.log2(tournament.size);
   const rounds: BracketMatchup[][] = [];
-  for (let r = 1; r <= totalRounds; r += 1) {
+  for (let r = 1; r <= totalRounds; r += 1) 
+  {
     rounds.push(
       tournament.matchups
         .filter((m) => m.round === r)
@@ -105,9 +100,7 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
         })),
     );
   }
-
   const winner = tournament.winnerId ? (byId.get(tournament.winnerId) ?? null) : null;
-
   return {
     id: tournament.id,
     name: tournament.name,
@@ -128,51 +121,52 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
   };
 }
 
-/**
- * Seeds the participants and lays out the first round.
- *
- * Humans are spread across the bracket before bots fill the rest, so a solo
- * player never draws a bot-versus-bot matchup in place of their own.
- */
+// Place humans first, then fill with bots, so a solo player always gets a real matchup of their own.
 export async function startTournament(tournamentId: number, requestedBy: number): Promise<string | null> {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     include: { participants: { include: { user: { select: { isBot: true } } } } },
   });
-  if (!tournament) return 'error.notFound';
-  if (tournament.createdById !== requestedBy) return 'error.tournament.hostOnly';
-  if (tournament.status !== 'registration') return 'error.tournament.alreadyStarted';
-  if (tournament.participants.length !== tournament.size) return 'error.tournament.needsFullBracket';
-
+  if (!tournament) 
+    return 'error.notFound';
+  if (tournament.createdById !== requestedBy) 
+    return 'error.tournament.hostOnly';
+  if (tournament.status !== 'registration') 
+    return 'error.tournament.alreadyStarted';
+  if (tournament.participants.length !== tournament.size) 
+    return 'error.tournament.needsFullBracket';
   const humans = shuffle(tournament.participants.filter((p) => !p.user.isBot).map((p) => p.userId));
   const bots = shuffle(tournament.participants.filter((p) => p.user.isBot).map((p) => p.userId));
-
-  // Interleave so consecutive seeds (which face each other in round 1) are a
-  // human and a bot wherever the numbers allow it.
   const ordered: number[] = [];
   const slots = tournament.size;
-  for (let i = 0; i < slots; i += 2) {
+  for (let i = 0; i < slots; i += 2) 
+  {
     const human = humans.shift();
     const other = bots.shift() ?? humans.shift();
-    if (human !== undefined) ordered.push(human);
-    if (other !== undefined) ordered.push(other);
+    if (human !== undefined) 
+      ordered.push(human);
+    if (other !== undefined) 
+      ordered.push(other);
   }
-  for (const leftover of [...humans, ...bots]) ordered.push(leftover);
-
+  for (const leftover of [...humans, ...bots]) 
+    ordered.push(leftover);
   await prisma.$transaction(async (tx) => {
-    for (let seed = 0; seed < ordered.length; seed += 1) {
+    for (let seed = 0; seed < ordered.length; seed += 1) 
+    {
       const userId = ordered[seed];
-      if (userId === undefined) continue;
+      if (userId === undefined) 
+        continue;
       await tx.tournamentParticipant.update({
         where: { tournamentId_userId: { tournamentId, userId } },
         data: { seed, round: 1 },
       });
     }
-
     const totalRounds = Math.log2(slots);
-    for (let round = 1; round <= totalRounds; round += 1) {
+    for (let round = 1; round <= totalRounds; round += 1) 
+    {
       const slotsInRound = slots / 2 ** round;
-      for (let slot = 0; slot < slotsInRound; slot += 1) {
+      for (let slot = 0; slot < slotsInRound; slot += 1) 
+      {
         await tx.tournamentMatchup.create({
           data: {
             tournamentId,
@@ -185,62 +179,52 @@ export async function startTournament(tournamentId: number, requestedBy: number)
         });
       }
     }
-
     await tx.tournament.update({ where: { id: tournamentId }, data: { status: 'running' } });
   });
-
   await prepareRound(tournamentId, 1);
   return null;
 }
 
-/**
- * Gives every matchup of a round somewhere to be played.
- *
- * A matchup with a human gets a private room; an all-bot matchup would have
- * nobody to press start, so it is resolved by simulation instead.
- */
+/* A matchup with a human gets a private room and an all bot matchup has no one to press start, so it's settled by simulation instead*/
 async function prepareRound(tournamentId: number, round: number): Promise<void> {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!tournament) return;
-
+  if (!tournament) 
+    return;
   const matchups = await prisma.tournamentMatchup.findMany({
     where: { tournamentId, round, status: 'pending' },
     orderBy: { slot: 'asc' },
   });
-
-  for (const matchup of matchups) {
-    // A seat left empty by an erased account. Nobody can play this matchup,
-    // so the player who is there advances, as they would if their opponent
-    // never turned up. Skipping it instead would stall the bracket for good.
-    if (!matchup.playerAId || !matchup.playerBId){
+  for (const matchup of matchups) 
+    {
+    /* A seat left empty by an erased account. Nobody can play this matchup, so the player who is there advances, as they would if their opponent
+    never turned up. */
+    if (!matchup.playerAId || !matchup.playerBId)
+    {
       await prisma.tournamentMatchup.updateMany({
         where: { id: matchup.id, status: 'pending' },
         data: { status: 'finished', winnerId: matchup.playerAId ?? matchup.playerBId },
       });
       continue;
     }
-
     const claimed = await prisma.tournamentMatchup.updateMany({
       where: { id: matchup.id, status: 'pending' },
       data: { status: 'ready' },
     });
     if (claimed.count === 0)
       continue;
-
     const players = await prisma.user.findMany({
       where: { id: { in: [matchup.playerAId, matchup.playerBId] } },
       select: { id: true, isBot: true, displayName: true },
     });
     const allBots = players.every((p) => p.isBot);
-
-    if (allBots) {
+    if (allBots) 
+    {
       await simulateBotMatchup({ tournament, matchup });
       continue;
     }
-
     const host = players.find((p) => !p.isBot);
-    if (!host) continue;
-
+    if (!host) 
+      continue;
     const room = await prisma.room.create({
       data: {
         code: roomCode(),
@@ -262,42 +246,33 @@ async function prepareRound(tournamentId: number, round: number): Promise<void> 
         },
       },
     });
-
     await prisma.tournamentMatchup.update({
       where: { id: matchup.id },
       data: { roomId: room.id, status: 'ready' },
     });
   }
-
   await checkRoundCompletion(tournamentId, round);
 }
 
-/**
- * Plays an all-bot matchup without a wall clock.
- *
- * It is a real match: a real deck, real `answers` rows, and the same
- * `decideBotAnswer` and `computeScore` functions the live loop uses. Only the
- * waiting is skipped, because there is no one watching it happen.
- */
+// Plays an all bot matchup instantly. Same deck, 'answers' rows, 'decideBotAnswer' and 'computeScore' as a live match, only the waiting is skipped.
 async function simulateBotMatchup(params: {
   tournament: { id: number; difficulty: Difficulty; cardCount: number; name: string };
   matchup: { id: number; playerAId: number | null; playerBId: number | null };
 }): Promise<void> {
   const { tournament, matchup } = params;
-  if (!matchup.playerAId || !matchup.playerBId) return;
-
+  if (!matchup.playerAId || !matchup.playerBId) 
+    return;
   const botIds = [matchup.playerAId, matchup.playerBId];
   const windowMs =
     tournament.difficulty === 'easy' ? 15_000 : tournament.difficulty === 'hard' ? 6_000 : 10_000;
-
   const deck = await drawMatchDeck({
     userIds: [],
     categoryIds: [],
     difficulty: tournament.difficulty,
     count: tournament.cardCount,
   });
-
-  if (deck.length === 0) {
+  if (deck.length === 0) 
+  {
     const [winnerId, loserId] = shuffle(botIds) as [number, number];
     await prisma.tournamentMatchup.update({
       where: { id: matchup.id }, 
@@ -330,7 +305,6 @@ async function simulateBotMatchup(params: {
       },
     },
   });
-
   const profiles = await prisma.botProfile.findMany({ where: { userId: { in: botIds } } });
   const brains = new Map<number, BotBrain>(
     profiles.map((p) => [
@@ -343,21 +317,20 @@ async function simulateBotMatchup(params: {
       },
     ]),
   );
-
   const cardMeta = await prisma.card.findMany({
     where: { id: { in: deck.map((c) => c.cardId) } },
     include: { fact: { include: { category: { select: { slug: true } } } } },
   });
   const metaById = new Map(cardMeta.map((c) => [c.id, c]));
-
   const match = await prisma.match.create({
     data: { roomId: room.id, tournamentId: tournament.id, cardCount: deck.length, endedAt: new Date() },
   });
-
   const matchCards = [];
-  for (let i = 0; i < deck.length; i += 1) {
+  for (let i = 0; i < deck.length; i += 1) 
+  {
     const entry = deck[i];
-    if (!entry) continue;
+    if (!entry) 
+      continue;
     matchCards.push(
       await prisma.matchCard.create({
         data: {
@@ -371,25 +344,26 @@ async function simulateBotMatchup(params: {
       }),
     );
   }
-
   const state = new Map<number, { matchPlayerId: number; score: number; combo: number; comboMax: number }>();
-  for (const botId of botIds) {
+  for (const botId of botIds) 
+  {
     const mp = await prisma.matchPlayer.create({ data: { matchId: match.id, userId: botId } });
     state.set(botId, { matchPlayerId: mp.id, score: 0, combo: 0, comboMax: 0 });
   }
-
-  for (let i = 0; i < matchCards.length; i += 1) {
+  for (let i = 0; i < matchCards.length; i += 1) 
+  {
     const mc = matchCards[i];
     const entry = deck[i];
-    if (!mc || !entry) continue;
+    if (!mc || !entry) 
+      continue;
     const meta = metaById.get(entry.cardId);
     const slug = meta?.fact.category.slug ?? '_default';
-
-    for (const botId of botIds) {
+    for (const botId of botIds) 
+    {
       const brain = brains.get(botId);
       const player = state.get(botId);
-      if (!brain || !player) continue;
-
+      if (!brain || !player) 
+        continue;
       const decision = decideBotAnswer({
         brain,
         categorySlug: slug,
@@ -397,11 +371,11 @@ async function simulateBotMatchup(params: {
         cardIsTrue: entry.isTrue,
         windowMs,
       });
-      if (decision.choice === null) {
+      if (decision.choice === null) 
+      {
         player.combo = 0;
         continue;
       }
-
       const correct = (decision.choice === 'truth') === entry.isTrue;
       const score = computeScore({
         correct,
@@ -411,12 +385,10 @@ async function simulateBotMatchup(params: {
         comboEnabled: true,
         isDouble: false,
       });
-
       const applied = applyDelta(player.score, score.points);
       player.score = applied.score;
       player.combo = correct ? score.comboAfter : 0;
       player.comboMax = Math.max(player.comboMax, player.combo);
-
       await prisma.answer.create({
         data: {
           matchCardId: mc.id,
@@ -432,11 +404,12 @@ async function simulateBotMatchup(params: {
       });
     }
   }
-
   const ranked = [...state.entries()].sort((a, b) => b[1].score - a[1].score);
-  for (let i = 0; i < ranked.length; i += 1) {
+  for (let i = 0; i < ranked.length; i += 1) 
+  {
     const row = ranked[i];
-    if (!row) continue;
+    if (!row) 
+      continue;
     await prisma.matchPlayer.update({
       where: { id: row[1].matchPlayerId },
       data: {
@@ -447,14 +420,13 @@ async function simulateBotMatchup(params: {
       },
     });
   }
-
   await prisma.tournamentMatchup.update({
     where: { id: matchup.id },
     data: { matchId: match.id, roomId: room.id, status: 'finished', winnerId: ranked[0]?.[0] ?? null },
   });
-
   const loserId = ranked[1]?.[0];
-  if (loserId !== undefined) {
+  if (loserId !== undefined) 
+  {
     await prisma.tournamentParticipant.updateMany({
       where: { tournamentId: tournament.id, userId: loserId },
       data: { eliminatedAt: new Date() },
@@ -462,10 +434,7 @@ async function simulateBotMatchup(params: {
   }
 }
 
-/**
- * Called by the engine when any match ends. Returns the tournament context
- * when the match belonged to one, so the client can show "you advanced".
- */
+//Called by the engine when a match ends. Returns the tournament context if the match was part of one, so the client can show "you advanced"
 export async function reportMatchResult(
   matchId: number,
 ): Promise<{ id: number; advancedUserId: number | null } | null> {
@@ -473,67 +442,61 @@ export async function reportMatchResult(
     where: { id: matchId },
     select: { id: true, roomId: true },
   });
-  if (!match) return null;
-
+  if (!match) 
+    return null;
   const matchup = await prisma.tournamentMatchup.findFirst({
     where: { roomId: match.roomId, status: { in: ['ready', 'playing'] } },
   });
-  if (!matchup) return null;
-
+  if (!matchup) 
+    return null;
   const players = await prisma.matchPlayer.findMany({
     where: { matchId },
     orderBy: [{ finalRank: 'asc' }, { score: 'desc' }],
     select: { userId: true, finalRank: true, score: true },
   });
   const winner = players[0];
-  if (!winner) return null;
-
+  if (!winner) 
+    return null;
   await prisma.$transaction(async (tx) => {
     await tx.tournamentMatchup.update({
       where: { id: matchup.id },
       data: { matchId, status: 'finished', winnerId: winner.userId },
     });
-
-    for (const player of players.slice(1)) {
+    for (const player of players.slice(1)) 
+    {
       await tx.tournamentParticipant.updateMany({
         where: { tournamentId: matchup.tournamentId, userId: player.userId },
         data: { eliminatedAt: new Date() },
       });
     }
-
     await tx.tournamentParticipant.updateMany({
       where: { tournamentId: matchup.tournamentId, userId: winner.userId },
       data: { round: matchup.round + 1 },
     });
-
     await tx.match.update({ where: { id: matchId }, data: { tournamentId: matchup.tournamentId } });
   });
-
   await checkRoundCompletion(matchup.tournamentId, matchup.round);
-
   return { id: matchup.tournamentId, advancedUserId: winner.userId };
 }
 
-/**
- * Promotes winners into the next round once every matchup of the current one
- * has a result, or crowns the champion when there is no next round.
- */
+//Promotes winners into the next round once every matchup of the current one has a result, or crowns the champion when there is no next round.
 async function checkRoundCompletion(tournamentId: number, round: number): Promise<void> {
   const current = await prisma.tournamentMatchup.findMany({
     where: { tournamentId, round },
     orderBy: { slot: 'asc' },
   });
-  if (current.length === 0) return;
-  if (current.some((m) => m.status !== 'finished')) return;
-
+  if (current.length === 0) 
+    return;
+  if (current.some((m) => m.status !== 'finished')) 
+    return;
   const nextRound = round + 1;
   const next = await prisma.tournamentMatchup.findMany({
     where: { tournamentId, round: nextRound },
     orderBy: { slot: 'asc' },
   });
-
-  if (next.length === 0) {
-    // No further round: the winner of the single remaining matchup takes it.
+  if (next.length === 0) 
+  {
+    // No further round, the winner of the single remaining matchup takes it.
     const champion = current[0]?.winnerId ?? null;
     await prisma.tournament.update({
       where: { id: tournamentId },
@@ -541,8 +504,8 @@ async function checkRoundCompletion(tournamentId: number, round: number): Promis
     });
     return;
   }
-
-  for (const matchup of next) {
+  for (const matchup of next) 
+  {
     const a = current[matchup.slot * 2]?.winnerId ?? null;
     const b = current[matchup.slot * 2 + 1]?.winnerId ?? null;
     await prisma.tournamentMatchup.update({
@@ -550,11 +513,10 @@ async function checkRoundCompletion(tournamentId: number, round: number): Promis
       data: { playerAId: a, playerBId: b },
     });
   }
-
   await prepareRound(tournamentId, nextRound);
 }
 
-/** Marks a matchup as being played, so the bracket shows it live. */
+// Marks a matchup as being played, so the bracket shows iit live
 export async function markMatchupPlaying(roomId: number): Promise<void> {
   await prisma.tournamentMatchup.updateMany({
     where: { roomId, status: 'ready' },
@@ -562,16 +524,9 @@ export async function markMatchupPlaying(roomId: number): Promise<void> {
   });
 }
 
-/** XP is granted for tournament matches too; the engine already called this. */
 export { grantMatchRewards };
 
-/**
- * Settles every unfinished matchup a user is drawn into as a loss.
- *
- * Called before an account is erased. Erasure removes the user from the
- * bracket, and a matchup left with one player can never be played, so the
- * whole tournament would wait on it forever. The opponent advances instead.
- */
+// Settles every unfinished matchup a user is drawn into as a loss 
 export async function forfeitTournaments(userId: number): Promise<void> {
   const open = await prisma.tournamentMatchup.findMany({
     where: {
@@ -580,8 +535,8 @@ export async function forfeitTournaments(userId: number): Promise<void> {
       tournament: { status: 'running' },
     },
   });
-
-  for (const matchup of open) {
+  for (const matchup of open) 
+  {
     const opponentId = matchup.playerAId === userId ? matchup.playerBId : matchup.playerAId;
     await prisma.tournamentMatchup.update({
       where: { id: matchup.id },
