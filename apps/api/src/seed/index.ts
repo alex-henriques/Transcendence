@@ -13,14 +13,7 @@ import {
   type LocalisedPair,
 } from './data.js';
 
-/**
- * Loads the committed card set and reference data.
- *
- * Every step is an upsert on a natural key, so running it twice changes
- * nothing. The container entrypoint runs it on every boot, which is what makes
- * `make` on a clean clone produce a playable game with no extra step.
- */
-
+// Loads the card set and reference data. Safe to run repeatedly and runs on every container boot.
 const FACTS_DIR = path.resolve(process.cwd(), 'prisma', 'seed', 'facts');
 
 function isPair(value: unknown): value is LocalisedPair {
@@ -40,29 +33,27 @@ async function seedCardSet(): Promise<{ categories: number; facts: number; cards
     console.warn(`[seed] no card set found at ${FACTS_DIR}; skipping`);
     return { categories: 0, facts: 0, cards: 0, translations: 0 };
   }
-
   let facts = 0;
   let cards = 0;
   let translations = 0;
-
-  for (const file of files) {
+  for (const file of files) 
+  {
     const raw = await readFile(path.join(FACTS_DIR, file), 'utf8');
     const parsed = JSON.parse(raw) as FactFile;
-
     const category = await prisma.category.upsert({
       where: { slug: parsed.category.slug },
       create: { slug: parsed.category.slug, name: parsed.category.name },
       update: { name: parsed.category.name },
     });
-
-    for (const entry of parsed.facts) {
+    for (const entry of parsed.facts) 
+    {
       const sourceRef = `curated:${entry.ref}`;
       const base = entry[DEFAULT_LOCALE];
-      if (!isPair(base)) {
+      if (!isPair(base)) 
+      {
         console.warn(`[seed] ${file}: ${entry.ref} has no ${DEFAULT_LOCALE} wording; skipped`);
         continue;
       }
-
       const fact = await prisma.facts.upsert({
         where: { sourceRef },
         create: {
@@ -80,25 +71,21 @@ async function seedCardSet(): Promise<{ categories: number; facts: number; cards
         },
       });
       facts += 1;
-
-      // Two cards per fact: the affirmative wording is the true one, the
-      // counter-wording is the false one. They are what makes an exact 50/50
-      // draw possible without touching the card set's composition.
-      for (const [form, text, isTrue] of [
-        ['affirmative', base.t, true],
-        ['negated', base.f, false],
-      ] as const) {
+      for (const [form, text, isTrue] of [['affirmative', base.t, true], ['negated', base.f, false], ] as const) 
+      {
         const card = await prisma.card.upsert({
           where: { factId_form: { factId: fact.id, form } },
           create: { factId: fact.id, text, isTrue, form },
           update: { text, isTrue },
         });
         cards += 1;
-
-        for (const locale of LOCALES) {
-          if (locale === DEFAULT_LOCALE) continue;
+        for (const locale of LOCALES) 
+        {
+          if (locale === DEFAULT_LOCALE) 
+            continue;
           const localised = entry[locale];
-          if (!isPair(localised)) continue;
+          if (!isPair(localised)) 
+            continue;
           const localisedText = form === 'affirmative' ? localised.t : localised.f;
 
           await prisma.cardTranslation.upsert({
@@ -111,7 +98,6 @@ async function seedCardSet(): Promise<{ categories: number; facts: number; cards
       }
     }
   }
-
   return { categories: files.length, facts, cards, translations };
 }
 
@@ -134,9 +120,9 @@ async function seedAchievements(): Promise<number> {
 }
 
 async function seedBots(): Promise<number> {
-  for (const bot of BOTS) {
+  for (const bot of BOTS) 
+  {
     const email = `${bot.displayName.toLowerCase()}@bots.wkb.local`;
-
     const user = await prisma.user.upsert({
       where: { email },
       create: {
@@ -174,7 +160,8 @@ async function seedBots(): Promise<number> {
 async function seedDemoUsers(): Promise<number> {
   const passwordHash = await hashPassword(DEMO_PASSWORD);
 
-  for (const demo of DEMO_USERS) {
+  for (const demo of DEMO_USERS) 
+  {
     await prisma.user.upsert({
       where: { email: demo.email },
       create: {
@@ -182,9 +169,6 @@ async function seedDemoUsers(): Promise<number> {
         displayName: demo.displayName,
         passwordHash,
         locale: demo.locale,
-        // The demo accounts land straight in the game. An evaluator following
-        // the README should not have to dismiss a setup screen first, and the
-        // screen is reachable at /setup and from a fresh sign-up anyway.
         onboardedAt: new Date(),
       },
       // Do not reset the password of an account somebody has been using.
@@ -196,12 +180,10 @@ async function seedDemoUsers(): Promise<number> {
 
 async function main(): Promise<void> {
   const started = Date.now();
-
   const cardSet = await seedCardSet();
   const achievements = await seedAchievements();
   const bots = await seedBots();
   const demo = await seedDemoUsers();
-
   console.log(
     `[seed] ${cardSet.categories} categories · ${cardSet.facts} facts · ` +
       `${cardSet.cards} cards · ${cardSet.translations} translations · ` +

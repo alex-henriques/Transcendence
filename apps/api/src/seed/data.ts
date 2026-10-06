@@ -1,6 +1,6 @@
 import type { Difficulty } from '@wkb/shared';
 
-/** Shape of the committed card-set files in prisma/seed/facts/. */
+// Format of the committed card set files in prisma/seed/facts/.
 export interface FactFile {
   category: { slug: string; name: string };
   license: string;
@@ -12,9 +12,9 @@ export interface FactFile {
 }
 
 export interface LocalisedPair {
-  /** The affirmative wording. Always the true one. */
+  // The affirmative wording. Always the true one.
   t: string;
-  /** The counter-wording. Always the false one. */
+  // The counter wording. Always the false one.
   f: string;
 }
 
@@ -26,14 +26,8 @@ export interface BotSeed {
   reactionMsStddev: number;
 }
 
-/**
- * The opponents.
- *
- * Each one is uneven on purpose: a bot that knows space and fumbles sports
- * reads as a person, while a uniformly mediocre one reads as a dice roll.
- * `reactionMsMean` is calibrated against the 10-second medium window and is
- * rescaled at runtime for whichever window the room is set to.
- */
+/* Each bot is uneven on purpose, that way they feel more human than bots. 
+'reactionMsMean' is set for the 10sec medium window and rescaled at runtime to match the room's window*/
 export const BOTS: BotSeed[] = [
   {
     displayName: 'Byte',
@@ -110,10 +104,7 @@ export interface AchievementSeed {
   criteria: Record<string, unknown>;
 }
 
-/**
- * Achievement rules live in the database as data. `criteria.kind` is read by
- * services/rewards.ts, so a new badge is a seed change, not a code change.
- */
+// Achievement rules are in the database as data. 'criteria.kind' is read by services/rewards.ts, so a new badge is a seed change, not a code change.
 export const ACHIEVEMENTS: AchievementSeed[] = [
   { slug: 'first-match', name: 'Opening Hand', description: 'Finish your first match.', criteria: { kind: 'matches_played', threshold: 1 } },
   { slug: 'regular', name: 'Regular', description: 'Finish ten matches.', criteria: { kind: 'matches_played', threshold: 10 } },
@@ -140,10 +131,7 @@ export const DEMO_USERS = [
 
 export const DEMO_PASSWORD = 'Password1!';
 
-/**
- * Demo accounts are shared by everyone trying the app, so the settings that
- * would break them for the next person (password, name, deletion) stay fixed.
- */
+//Demo accounts are shared by everyone trying the app, so the settings that would break them for the next person staty fixed.
 export function isDemoAccount(email: string): boolean {
   return DEMO_USERS.some((demo) => demo.email === email);
 }
