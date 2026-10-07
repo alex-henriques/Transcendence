@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-/*Shown while the room socket is disconnected. Without it, a dropped 
-connection looked like nothing, and players kept pressing answers that were never sent. 
-It floats instead of blocking, because reconnects are usually quick and a modal would be 
-worse than the hiccup.*/
+// Banner shown while the room socket is disconnected. Non blocking, since reconnects are quick 
 
 export function ConnectionLost({ away }: { away: boolean }): JSX.Element | null {
-  // A grace period, so a socket that blinks does not flash a panel
+  //Short grace period so a brief disconnect doesn't flash the banner
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!away) 
@@ -28,8 +25,7 @@ export function ConnectionLost({ away }: { away: boolean }): JSX.Element | null 
       aria-live="polite"
     >
       <div className="animate-fade-up pointer-events-auto flex max-w-md items-center gap-4 rounded-lg border border-rule-strong bg-surface px-4 py-3 shadow-[0_14px_30px_-16px_rgb(var(--shadow)/0.5)]">
-        {/* A card that has left the deck and not arrived, with the gap
-        between them pulsing while the socket retries. */}
+        {/* A card that has left the deck and not arrived, with the gap between them pulsing while the socket retries. */}
         <span aria-hidden="true" className="relative hidden h-11 w-20 shrink-0 sm:block">
           <span
             className="absolute left-0 top-0 h-11 w-8 rounded border border-card-edge"

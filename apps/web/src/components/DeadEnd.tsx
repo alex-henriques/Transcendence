@@ -3,10 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { CARD_MOTION } from '../theme/cardStyle.js';
 import { suitFor, suitVars } from '../theme/suits.js';
 
-/*A dead end shown as a card. Each error screen tells the player that something they believed isn't true,
- which is how the game already works, so it's shown as a statement with a Myth verdict. 
- The verdict is plum, like a false statement elsewhere in the game, not the red of a wrong answer, 
- because the player did nothing wrong */
+/*A dead end, shown as a card, a statement the player believed, with a plum Myth verdict. 
+Plum matches false statements elsewhere, not the red of a wrong answer, because the player did nothing wrong.*/
 export function DeadEnd({
   statement,
   body,
@@ -45,7 +43,7 @@ export function DeadEnd({
         </div>
       </article>
 
-      {/* The reveal panel, in the shape a player has already seen twenty times a match: the verdict, 
+      {/* The reveal panel, in the shape a player has already seen twenty times a match, the verdict, 
       then what is actually the case. */}
       <div className="stamp w-full rounded border-2 border-myth bg-myth-wash px-5 py-4 text-center">
         <p className="text-2xl font-semibold uppercase tracking-[0.08em] text-myth">

@@ -1,9 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { withTranslation, type WithTranslation } from 'react-i18next';
 
-/*  Error boundary; the last line before a white screen. Without it, one
-render error blanks the whole app and looks like the site is down. 
-React has no hook for this, it offers a reload instead of recovering in place, 
+/*  Error boundary; the last line before a white screen. Without it, one render error blanks the whole app and 
+looks like the site is down. React has no hook for this, it offers a reload instead of recovering in place, 
 since the same state would likely throw again.*/
 interface Props extends WithTranslation {
   children: ReactNode;
@@ -21,8 +20,8 @@ class Boundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // The console has to stay clean in normal operation, and this is not
-    // normal operation: if the app has broken, the stack is the whole point.
+    /* The console has to stay clean in normal operation, and this is not normal operation, if the app has broken,
+   the stack is the whole point.*/
     console.error('[wkb] render failed', error, info.componentStack);
   }
 
@@ -32,8 +31,8 @@ class Boundary extends Component<Props, State> {
     const { t } = this.props;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-paper px-4 text-center">
-        {/* Three cards on the table at broken angles, drawn from the same
-            card face the game uses rather than from a picture of one. */}
+        {/* Three cards on the table at broken angles, drawn from the same card face the game uses rather than 
+        /from a picture of one. */}
         <div aria-hidden="true" className="relative h-32 w-48">
           <span className="card-face absolute left-0 top-5 h-28 w-20 -rotate-[21deg]" />
           <span className="card-face absolute left-14 top-1 h-28 w-20 rotate-[5deg]" />

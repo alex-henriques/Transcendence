@@ -5,18 +5,7 @@ import { Avatar } from './ui.js';
 import { CARD_MOTION, CARD_SUITS, DECK_OFFSETS } from '../theme/cardStyle.js';
 import { suitFor, suitVars } from '../theme/suits.js';
 
-/**
- * Counts the answer window down.
- *
- * A depleting rule rather than a ring: the card is a line of prose, and a bar
- * running underneath it reads as part of the same object instead of a separate
- * dial competing for attention.
- *
- * Anchored to the moment the card was painted in *this* browser, never to the
- * server's `deadline_at`: the two clocks can disagree by seconds, and a bar
- * that empties early would make the player think they had missed a card they
- * can still answer. The bar is decoration; the server owns the real deadline.
- */
+//Decorative countdown bar timed from the local paint not 'deadline_at'. The server owns the deadline.
 export function TimerBar({
   startedAt,
   windowMs,
@@ -30,33 +19,28 @@ export function TimerBar({
   const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (paused) return undefined;
+    if (paused) 
+      return undefined;
     const tick = () => {
       setRemaining(Math.max(0, windowMs - (Date.now() - startedAt)));
       frameRef.current = window.requestAnimationFrame(tick);
     };
     frameRef.current = window.requestAnimationFrame(tick);
     return () => {
-      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+      if (frameRef.current !== null) 
+        window.cancelAnimationFrame(frameRef.current);
     };
   }, [startedAt, windowMs, paused]);
-
   const ratio = windowMs > 0 ? remaining / windowMs : 0;
   const seconds = Math.ceil(remaining / 1000);
-  // Solid steps, not a gradient: the colour is information, not decoration.
-  //
-  // Ink, then ochre, then red — never green. Green belongs to the reveal,
-  // where it means the answer was right; a green bar while the question is
-  // still open would be the same colour saying something else entirely.
+  //Solid steps (ink, ochre, red), not a gradient because the colour carries meaning
   const tone = ratio > 0.5 ? 'bg-ink-soft' : ratio > 0.22 ? 'bg-spot' : 'bg-wrong';
   const textTone = ratio > 0.5 ? 'text-ink-soft' : ratio > 0.22 ? 'text-spot' : 'text-wrong';
-
   return (
     <div className="flex items-center gap-3">
       <div className="h-[3px] flex-1 overflow-hidden bg-surface-2" role="presentation">
-        {/* scaleX, not width: this runs every frame for the whole answer
-            window, and width costs a layout and a paint each time where a
-            transform is composited. */}
+        {/* scaleX, not width: this runs every frame for the whole answer window, and width costs a layout 
+        and a paint each time where a transform is composited. */}
         <div
           className={`h-full w-full origin-left ${tone} ${CARD_MOTION && remaining <= 3000 && remaining > 0 ? 'urgency' : ''}`}
           style={{ transform: `scaleX(${ratio})` }}
@@ -78,22 +62,18 @@ export function CardFace({
 }): JSX.Element {
   const { t } = useTranslation();
   const suit = suitFor(card.categorySlug);
-
-  // Sheets behind the card are the rest of the deck, so the card that animates
-  // in is visibly coming off a stack rather than appearing from nowhere. They
-  // run out on the last card, when there is no stack left.
+  // Sheets behind the card show the rest of the deck, so each new card comes off a stack. None on the last card
   const remaining = card.total - card.position;
   const sheets = CARD_SUITS ? DECK_OFFSETS.slice(0, Math.max(0, Math.min(2, remaining))) : [];
   const index = String(card.position).padStart(2, '0');
-
   return (
     <div
-      /* The sheets stick out below and to the right, so the wrapper reserves
-         that space rather than letting them fall outside the layout. */
+      /* The sheets stick out below and to the right; the wrapper reserves that space rather than letting them
+      fall outside the layout. */
       className="relative pb-5 pr-6"
       style={CARD_SUITS ? suitVars(card.categorySlug) : undefined}
     >
-      {/* Painted furthest-first so the nearest sheet sits on top of the rest. */}
+      {/* Painted furthest first so the nearest sheet sits on top of the rest */}
       {[...sheets].reverse().map((offset) => (
         <div
           key={offset.dx}
@@ -112,8 +92,8 @@ export function CardFace({
 
       <article
         className={[
-          /* A minimum height so a four-word statement still produces a card
-             rather than a strip. The deck behind it is the same shape. */
+          /* A minimum height so a four word statement still produces a card rather than a strip. 
+          The deck behind it is the same shape. */
           'card-face flex min-h-[21rem] items-center px-6 py-12 sm:min-h-[25rem] sm:px-12',
           CARD_MOTION ? 'deal-in' : '',
           dimmed ? 'opacity-70' : '',
@@ -193,7 +173,7 @@ export function VoteButtons({
 }): JSX.Element {
   const { t } = useTranslation();
 
-  // Keyboard shortcuts: a quiz played against a clock should not require aim.
+  // Keyboard shortcuts, a quiz played against a clock should not require aim
   useEffect(() => {
     if (disabled) return undefined;
     const onKey = (event: KeyboardEvent) => {
@@ -210,8 +190,8 @@ export function VoteButtons({
   const base =
     'press flex-1 rounded border px-6 py-5 text-left transition disabled:cursor-not-allowed sm:py-6';
 
-  // Written out rather than interpolated: Tailwind compiles the classes it can
-  // literally see in the source, so `bg-${colour}` would produce no CSS at all.
+  /*Written out rather than interpolated: Tailwind compiles the classes it can literally see in the source 
+  so 'bg-${colour}' would produce no CSS at all.*/
   const SKIN = {
     truth: {
       idle: 'border-truth/40 bg-surface hover:bg-truth-wash',
@@ -224,12 +204,10 @@ export function VoteButtons({
       word: 'text-myth',
     },
   } as const;
-
   const face = (choice: Vote, key: string) => {
     const active = chosen === choice;
     const spent = chosen !== null && !active;
     const skin = SKIN[choice];
-
     return (
       <button
         key={choice}
@@ -254,74 +232,49 @@ export function VoteButtons({
       </button>
     );
   };
-
   return <div className="flex flex-col gap-3 sm:flex-row">{face('truth', 'T')}{face('myth', 'M')}</div>;
 }
 
-/**
- * The scoreboard, set as a ledger: a rank column, a name column, and a figure
- * column in tabular figures so the numbers line up as they change.
- */
-/**
- * Slides scoreboard rows to their new places instead of letting them jump.
- *
- * A rank change is the one thing a player is actually watching for, and React
- * reorders the nodes with no bridge: the player you just overtook appears
- * below you, and you have to work out that it happened. Measure before the
- * browser paints, invert the delta, and play it forward.
- *
- * WAAPI rather than a CSS class because the animation is off the main thread
- * and, more importantly, retargets: this fires on the same frame the reveal
- * lands, and a second reveal arriving mid-slide replaces the motion instead of
- * queueing behind it.
- */
+
+/* The scoreboard, laid out like a ledger; rank, name, and score in tabular figures so numbers line up
+Slides scoreboard rows to their new positions instead of letting them jump 
+(FLIP: measure before paint, invert the difference, play it forward). 
+Uses WAAPI, not a CSS class, so a second reveal mid-slide replaces the motion instead of queueing behind it */
 function useRankFlip(entries: ScoreboardEntry[]): (id: number) => (node: HTMLLIElement | null) => void {
   const rows = useRef(new Map<number, HTMLLIElement>());
   const previousTops = useRef(new Map<number, number>());
-
   useLayoutEffect(() => {
     const before = previousTops.current;
     const after = new Map<number, number>();
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    for (const [id, node] of rows.current) {
-      // How far a slide already in flight has got. Read it before cancelling,
-      // because cancelling snaps the transform away. `none` is the common case
-      // and is not a matrix.
+    for (const [id, node] of rows.current) 
+    {
       const applied = getComputedStyle(node).transform;
       const inflight = applied && applied !== 'none' ? new DOMMatrixReadOnly(applied).m42 : 0;
-      for (const running of node.getAnimations()) running.cancel();
-
-      // offsetTop rather than getBoundingClientRect: it is layout-relative, so
-      // scrolling between two updates is not mistaken for the row moving, and
-      // it ignores the transform a running slide is applying. The scoreboard
-      // stacks under the card on a narrow screen and is scrolled past
-      // constantly, which made the viewport-relative version slide every row
-      // by the scroll distance on the next score change.
+      for (const running of node.getAnimations()) 
+        running.cancel();
       const top = node.offsetTop;
       after.set(id, top);
-
       const was = before.get(id);
       // A row that was not on screen last time has nowhere to travel from.
-      if (still || was === undefined) continue;
-
-      // Start from where the row actually is, so a second reorder landing
-      // mid-slide continues rather than jumping back to the old layout.
+      if (still || was === undefined) 
+        continue;
+      // Start from where the row actually is so a second reorder landing mid slide continues rather than jumping back to the old layout.
       const from = was - top + inflight;
-      if (from === 0) continue;
-
+      if (from === 0) 
+        continue;
       node.animate(
         [{ transform: `translateY(${from}px)` }, { transform: 'translateY(0)' }],
         { duration: 180, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
       );
     }
-
     previousTops.current = after;
   }, [entries]);
-
   return (id: number) => (node: HTMLLIElement | null) => {
-    if (node) rows.current.set(id, node);
-    else rows.current.delete(id);
+    if (node) 
+      rows.current.set(id, node);
+    else 
+      rows.current.delete(id);
   };
 }
 
@@ -336,13 +289,11 @@ export function Scoreboard({
 }): JSX.Element {
   const { t } = useTranslation();
   const rowRef = useRankFlip(entries);
-
   return (
     <section className="panel overflow-hidden">
       <h2 className="border-b border-rule px-4 py-2.5 text-sm font-semibold text-ink">
         {t('scoreboard.title')}
       </h2>
-
       {entries.length === 0 ? (
         <p className="px-4 py-4 text-sm text-muted">{t('match.waiting')}</p>
       ) : (

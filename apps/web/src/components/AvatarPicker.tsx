@@ -3,16 +3,15 @@ import { AVATAR_PRESETS, presetFromStored, presetToStored, type AvatarPreset } f
 import { AVATAR_ART } from '../theme/avatars.js';
 import { Avatar } from './ui.js';
 
-/* Sixteen stock avatars, grouped by suit, in a radiogroup (one choice among
-many, with arrow key navigation built in). The first option is "no stock
-avatar" and shows the generated initials the account falls back to */
+ /* Sixteen stock avatars grouped by suit, in a radiogroup (one choice among many, with arrow key navigation built in). 
+ The first option is "no stock avatar" and shows the generated initials the account falls back to.*/
 export function AvatarPicker({
   value,
   displayName,
   onChange,
   disabled = false,
 }: {
-  //The stored avatar value, which can be an upload, a preset, or null
+  //The stored avatar value which can be an upload, a preset, or null
   value: string | null;
   displayName: string;
   onChange: (next: AvatarPreset | null) => void;
@@ -55,10 +54,9 @@ export function AvatarPicker({
       <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
       {[...bySuit.entries()].map(([suit, presets]) => (
         <div key={suit}>
-          {/* Not the suit colour. These sit on the themed surface, where the
-              suit colours measure as low as 2.82:1, and a label is text and
-              owes 4.5:1. The colour cue is right underneath on the tiles,
-              where it is printed on card stock and clears the bar. */}
+          {/* Not the suit colour. These sit on the themed surface where the suit colours measure as low as 2.82:1, 
+          and a label is text and owes 4.5:1. The colour cue is right underneath on the tiles, 
+          where it is printed on card stock and clears the bar. */}
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
             {t(`categories.${suit}`)}
           </p>

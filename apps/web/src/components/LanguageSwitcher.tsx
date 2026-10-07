@@ -4,26 +4,22 @@ import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.js';
 import { currentLocale, setLocale } from '../i18n/index.js';
 
-/**
- * Changing the language is immediate. For a signed-in player it is also
- * persisted on the account, which is what decides the language their cards are
- * served in. Each player sees the card in their own language, since the answer
- * is the same either way.
- */
+/* Language changes apply immediately and, for signed-in players, are saved on the account, which sets the language of their cards.
+Each player sees the card in their own language, since the answer is the same. */
 export function LanguageSwitcher({ compact = false }: { compact?: boolean }): JSX.Element {
   const { t } = useTranslation();
   const { user, patchUser } = useAuth();
   const active = currentLocale();
-
   const change = (locale: Locale) => {
-    if (locale === active) return;
+    if (locale === active) 
+      return;
     setLocale(locale);
-    if (user) {
+    if (user) 
+    {
       patchUser({ locale });
       void api.patch('/api/users/me', { locale }).catch(() => undefined);
     }
   };
-
   return (
     <div className={compact ? '' : 'flex items-center gap-2'}>
       {!compact && <span className="text-xs text-muted">{t('common.language')}</span>}
