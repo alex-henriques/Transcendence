@@ -41,8 +41,8 @@ COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY apps/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-# The server runs unprivileged, and `prisma migrate deploy` verifies its engine
-# files at startup, so the whole tree has to belong to the runtime user.
+# The server runs unprivileged, and 'prisma migrate deploy' verifies its engine files at startup, 
+# so the whole tree has to belong to the runtime user
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
  && mkdir -p /app/apps/api/uploads \
  && chown -R node:node /app

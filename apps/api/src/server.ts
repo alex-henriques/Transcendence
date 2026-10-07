@@ -26,8 +26,8 @@ async function build() {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
-      // WebSocket tickets and OAuth codes travel after the `?`, so each
-      // request is logged by its path alone and those never reach a log file.
+      /*WebSocket tickets and OAuth codes travel after the '?', 
+      so each request is logged by its path alone and those never reach a log file.*/
       serializers: {
         req: (request) => ({
           method: request.method,
@@ -38,9 +38,7 @@ async function build() {
     trustProxy: (_address, hop) => hop === 0,
     bodyLimit: 1_048_576,
   });
-
   registerErrorHandler(app);
-
   await app.register(cookie);
   await app.register(rateLimit, {
     global: true,
@@ -53,20 +51,17 @@ async function build() {
   await app.register(websocket, {
     options: { maxPayload: 64 * 1024 },
   });
-
   await mkdir(UPLOAD_DIR, { recursive: true });
   await app.register(fastifyStatic, {
     root: UPLOAD_DIR,
     prefix: '/api/uploads/',
-    // User-supplied bytes: never let the browser guess what they are, and
-    // never let one of them execute in our origin.
+    //User uploaded bytes ie the browser must not guess their type or run them in our origin.
     setHeaders(reply) {
       reply.header('X-Content-Type-Options', 'nosniff');
       reply.header('Content-Security-Policy', "default-src 'none'; sandbox");
       reply.header('Cache-Control', 'public, max-age=86400');
     },
   });
-
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(oauthRoutes);
@@ -76,16 +71,13 @@ async function build() {
   await app.register(catalogRoutes);
   await app.register(statsRoutes);
   await app.register(tournamentRoutes);
-
   await app.register(registerLobbyChannel);
   await app.register(registerRoomChannel);
-
   return app;
 }
 
 async function main(): Promise<void> {
   const app = await build();
-
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
     try {
@@ -95,10 +87,8 @@ async function main(): Promise<void> {
       process.exit(0);
     }
   };
-
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
-
   try {
     await app.listen({ port: env.API_PORT, host: '0.0.0.0' });
   } catch (error) {

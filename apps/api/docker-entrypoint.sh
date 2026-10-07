@@ -1,6 +1,6 @@
 #!/bin/sh
-# Applies migrations and loads the card set before the server accepts traffic.
-# Both steps are idempotent, so a restart is always safe.
+# Applies migrations and loads the card set before the server accepts traffic
+# Both steps are idempotent. Therefore a restart is always safe.
 set -e
 
 echo "[entrypoint] applying migrations"

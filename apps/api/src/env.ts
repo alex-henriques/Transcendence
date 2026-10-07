@@ -1,9 +1,7 @@
 import { z } from 'zod';
 
-/**
- * Configuration is validated once, at boot. A missing secret should stop the
- * process immediately rather than surface as a confusing 500 an hour later.
- */
+/*Configuration is validated once at boot. A missing secret should stop the process immediately
+ rather than surface as a confusing 500 an hour later.*/
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   API_PORT: z.coerce.number().int().positive().default(3000),
@@ -24,15 +22,15 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
   GITHUB_CLIENT_ID: z.string().optional().default(''),
   GITHUB_CLIENT_SECRET: z.string().optional().default(''),
-  // 42's own OAuth provider. `FT_` rather than `42_` because an environment
-  // variable name cannot start with a digit.
+  //'FT_' rather than '42_' because an environment variable name cannot start with a digit.
   FT_CLIENT_ID: z.string().optional().default(''),
   FT_CLIENT_SECRET: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);
 
-if (!parsed.success) {
+if (!parsed.success) 
+{
   const details = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
   // eslint-disable-next-line no-console
   console.error(`Invalid environment configuration:\n${details}`);
@@ -41,12 +39,8 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-/**
- * The slug is what appears in the callback URL, so `42` is the one registered
- * with 42's intra as the redirect URI. The type is written out rather than
- * inferred: TypeScript reads a numeric-looking object key as a number, and
- * every use of this name is a string.
- */
+/*The slug appears in the callback URL, so '42' matches the redirect URI registered with 42's intra. 
+The type is explicit because TypeScript would infer a number from the key '42', and this name is always used as a string.*/
 export type OAuthProviderName = 'google' | 'github' | '42';
 
 interface OAuthProviderConfig {
@@ -73,10 +67,9 @@ export const oauthProviders: Record<OAuthProviderName, OAuthProviderConfig> = {
   },
 };
 
-/** Cookies are only marked Secure when the public origin actually is HTTPS. */
+// Cookies are only marked Secure when the public origin actually is HTTPS
 export const cookieSecure = env.PUBLIC_ORIGIN.startsWith('https://');
 
-//Drops every "/" at the end of an origin, without a regular expression.
 function stripTrailingSlashes(value: string): string {
   let end = value.length;
   while (end > 0 && value[end - 1] === '/')
@@ -84,15 +77,8 @@ function stripTrailingSlashes(value: string): string {
   return value.slice(0, end);
 }
 
-
-/**
- * Every origin this deployment answers on, `PUBLIC_ORIGIN` first.
- *
- * This is an allowlist and not a hint. An OAuth redirect built from the
- * request's own Host header would let anyone who can set that header point
- * the callback, and the code, at a host of their choosing, so a request is
- * only ever answered on an origin that appears in this list.
- */
+/*Every origin this deployment answers on 'PUBLIC_ORIGIN' first. It's an allow list; building the OAuth redirect from the 
+Host header would let anyone who sets it send the callback and authorisation code to their own host.*/
 export const publicOrigins: string[] = [
   env.PUBLIC_ORIGIN,
   ...env.PUBLIC_ORIGIN_ALIASES.split(',')
