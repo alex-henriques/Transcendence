@@ -7,45 +7,34 @@ import { redeemTicket } from './ticket.js';
 import { announcePresence, joinLobby, leaveLobby, onlineUserIds } from '../game/registry.js';
 import { listPublicRooms } from '../services/rooms.js';
 
-/**
- * The lobby channel: the public room list, and presence.
- *
- * Kept separate from the match channel so that a message never has to be
- * routed by working out whether the socket happens to be in a room. It is also
- * what keeps `last_seen_at` warm, which is where the friends list reads a
- * user's online status from.
- */
+/* The lobby channel; public room list and presence, it's separate from the match channel so messages don't need a 
+"is this socket in a room?" check. It also keeps 'last_seen_at' fresh, which the friends list uses for online status.*/
 export async function registerLobbyChannel(app: FastifyInstance): Promise<void> {
   app.get('/ws/lobby', { websocket: true }, (socket: WebSocket, request: FastifyRequest) => {
     const query = request.query as { ticket?: string };
     const redeemed = redeemTicket(query.ticket);
-
-    if (!redeemed) {
+    if (!redeemed) 
+    {
       socket.send(
         JSON.stringify({ type: 'error', code: 'error.ws.badTicket', message: 'error.ws.badTicket' }),
       );
       socket.close(4401, 'unauthorized');
       return;
     }
-
     const channel = new Channel(socket, redeemed.userId, redeemed.locale, () => {
       request.log.debug({ userId: redeemed.userId }, 'lobby socket heartbeat timeout');
     });
-
     const wasOffline = !onlineUserIds().has(redeemed.userId);
     joinLobby(channel);
     channel.startHeartbeat();
-
-    if (wasOffline) announcePresence(redeemed.userId, true);
-
+    if (wasOffline) 
+      announcePresence(redeemed.userId, true);
     void (async () => {
       channel.send({ type: 'lobby:rooms', rooms: await listPublicRooms() });
       await prisma.user
         .update({ where: { id: redeemed.userId }, data: { lastSeenAt: new Date() } })
         .catch(() => undefined);
     })();
-
-    // The heartbeat doubles as the presence refresh.
     const presenceTimer = setInterval(() => {
       void prisma.user
         .update({ where: { id: redeemed.userId }, data: { lastSeenAt: new Date() } })

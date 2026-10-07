@@ -2,15 +2,9 @@ import { randomInt } from 'node:crypto';
 import type { Locale } from '@wkb/shared';
 import { token } from '../lib/random.js';
 
-/**
- * Single-use tickets for WebSocket authentication.
- *
- * The access token deliberately never appears in a WebSocket URL: query
- * strings land in proxy logs and browser history, and unlike a fetch there is
- * no way to attach an Authorization header to a browser WebSocket handshake.
- * So the client trades its access token for a ticket over HTTPS, and the
- * ticket, valid for 30 seconds and usable once, travels in the URL instead.
- */
+/* Single use tickets for WebSocket auth. The access token can't go in the URL otherwise it would leak into logs and history,
+and browsers can't set headers on a WebSocket handshake), so the client swaps it over HTTPS for a ticket
+that's valid for 30 seconds and works once.*/
 const TTL_MS = 30_000;
 
 interface Ticket {
@@ -26,22 +20,28 @@ export function issueTicket(userId: number, locale: Locale): string {
   tickets.set(value, { userId, locale, expiresAt: Date.now() + TTL_MS });
 
   // Opportunistic sweep; the map only ever holds a handful of live entries.
-  if (tickets.size > 64 && randomInt(8) === 0) sweep();
+  if (tickets.size > 64 && randomInt(8) === 0) 
+    sweep();
   return value;
 }
 
 export function redeemTicket(value: string | undefined): Ticket | null {
-  if (!value) return null;
+  if (!value) 
+    return null;
   const found = tickets.get(value);
-  if (!found) return null;
+  if (!found) 
+    return null;
   tickets.delete(value);
-  if (found.expiresAt < Date.now()) return null;
+  if (found.expiresAt < Date.now()) 
+    return null;
   return found;
 }
 
 function sweep(): void {
   const now = Date.now();
-  for (const [key, value] of tickets) {
-    if (value.expiresAt < now) tickets.delete(key);
+  for (const [key, value] of tickets) 
+  {
+    if (value.expiresAt < now) 
+      tickets.delete(key);
   }
 }
