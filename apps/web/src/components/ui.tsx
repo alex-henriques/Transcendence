@@ -4,15 +4,9 @@ import { presetFromStored } from '@wkb/shared';
 import { AVATAR_ART } from '../theme/avatars.js';
 import { suitVars } from '../theme/suits.js';
 
-/** A small set of primitives, so every screen looks like the same product. */
-
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'truth' | 'myth';
 
-/**
- * Every variant is a solid fill with a solid border. The hover state is a
- * brightness step from `.press` rather than a second colour, so a control
- * announces itself the same way everywhere and a new variant cannot forget to.
- */
+/* Solid fill and border on every variant. Hover comes from '.press'(brightness step), so controls behave the same*/
 const VARIANTS: Record<Variant, string> = {
   primary: 'border border-spot bg-spot text-surface',
   secondary: 'border border-rule-strong bg-surface text-ink',
@@ -42,8 +36,6 @@ export function Button({
       type="button"
       disabled={disabled || loading}
       className={[
-        // `press` is the project's own press idiom, a key going down, rather
-        // than the scale-on-press of app UI. It lived only on the vote buttons.
         'press inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTS[variant],
@@ -69,7 +61,7 @@ export function Spinner({ className = 'h-4 w-4' }: { className?: string }): JSX.
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  /** An i18n key from the shared Zod schemas. */
+  // An i18n key from the shared Zod schemas 
   error?: string | undefined;
   hint?: string | undefined;
 }
@@ -78,7 +70,6 @@ export function Field({ label, error, hint, id, className = '', ...rest }: Field
   const { t } = useTranslation();
   const inputId = id ?? `field-${label.replace(/\W+/g, '-').toLowerCase()}`;
   const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
-
   return (
     <div className={className}>
       <label className="label" htmlFor={inputId}>
@@ -144,13 +135,7 @@ export function PageTitle({
   );
 }
 
-/**
- * Avatar with a generated fallback.
- *
- * The subject requires a default avatar when none is uploaded. Rather than
- * shipping one grey silhouette for everybody, the fallback derives a stable
- * hue from the display name, so players stay visually distinct in a scoreboard.
- */
+/* Avatar with a generated fallback, ie, when none is uploaded a colour derived from the display name keeps player apart  */
 export function Avatar({
   name,
   src,
@@ -169,27 +154,19 @@ export function Avatar({
     .map((part) => [...part][0] ?? '')
     .join('')
     .toUpperCase();
-
-  // A small fixed set of muted inks, picked deterministically from the name.
-  // A generated hue wheel would drift into colours that fight the palette;
-  // five hand-chosen tones stay inside it and still tell people apart.
   const TONES = ['#5b6b52', '#7a5c3a', '#4f5f70', '#6e4a4a', '#5a5468'] as const;
   let hash = 0;
-  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) % 997;
-
-  // A stock avatar is stored in the same field as an uploaded one, so this is
-  // the one place that has to know the difference. `presetFromStored` returns
-  // null for anything we do not ship, which keeps a stale or tampered value
-  // from ever reaching the renderer.
+  for (let i = 0; i < name.length; i += 1) 
+    hash = (hash * 31 + name.charCodeAt(i)) % 997;
+/* Stock and uploaded avatars share one field, so this is where they're told apart. 
+'presetFromStored' returns null for unknown values in order for the stale or tampered data never reaches the renderer.*/
   const preset = presetFromStored(src);
-  if (preset) {
+  if (preset) 
+  {
     const art = AVATAR_ART[preset];
     return (
       <span
         aria-hidden="true"
-        /* Card stock in both themes, like everything else printed in a suit
-           colour. On the dark surface the suit colours measure 2.91:1, which
-           fails the 3:1 that a graphic carrying meaning has to clear. */
         className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded border border-card-edge ${className}`}
         style={{ width: size, height: size, background: 'rgb(var(--card))', ...suitVars(art.suit) }}
       >
@@ -199,8 +176,8 @@ export function Avatar({
       </span>
     );
   }
-
-  if (src) {
+  if (src) 
+  {
     return (
       <img
         src={src}
@@ -212,14 +189,9 @@ export function Avatar({
       />
     );
   }
-
   return (
     <span
       aria-hidden="true"
-      /* `text-card`, not `text-surface`: the tones below are a fixed data
-         palette that does not follow the theme, so the ink on them must not
-         either. `text-surface` inverts, and inverted to dark it put dark ink
-         on a dark tone. */
       className={`inline-flex shrink-0 items-center justify-center rounded font-semibold text-card ${className}`}
       style={{
         width: size,

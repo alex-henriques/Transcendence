@@ -23,11 +23,10 @@ const ICONS: Record<Theme, JSX.Element> = {
   ),
 };
 
-/** Light, follow the system, or dark. Three states, so "follow" is reachable. */
+// Light, follow the system, or dark
 export function ThemeSwitcher(): JSX.Element {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
-
   return (
     <div
       className="flex rounded-lg border border-rule-strong bg-surface p-0.5"
@@ -42,8 +41,7 @@ export function ThemeSwitcher(): JSX.Element {
           aria-pressed={theme === option}
           title={t(`theme.${option}`)}
           className={[
-            // py-1.5, not py-1: a 14px icon in 8px of padding is a 22px
-            // target, and this sits in the header of every screen.
+            // py-1.5 instead of py-1 with a 14px icon; py-1 gives only a 22px tap target which too small for a button in every header
             'press rounded px-1.5 py-1.5 sm:px-2',
             theme === option ? 'bg-spot text-surface' : 'text-muted hover:text-ink',
           ].join(' ')}

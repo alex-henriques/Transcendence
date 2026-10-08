@@ -16,9 +16,8 @@ function Brand(): JSX.Element {
       >
         W
       </span>
-      {/* The word is dropped entirely below `sm`. Even "WKB" costs about
-          fifty pixels of a 320px bar that also has to hold two switchers and
-          a menu button, and a mark on its own is understood. */}
+      {/* On small screens we hide the word and show only the logo. Even when "WKB" takes about 50px of 320px bar that also has to fit two
+      switchersand a menu button, and the logo alone is clear enough */}
       <span className="hidden text-lg font-semibold tracking-tight text-ink sm:inline">
         {t('app.name')}
       </span>
@@ -46,9 +45,7 @@ function Header(): JSX.Element {
     navigate('/login');
   };
 
-  // The active tab is marked with a rule under it, the way a printed index
-  // marks the page you are on. A filled pill would be a fourth box competing
-  // with the three already in the header.
+  // The active tab gets a line underneath like a printed index. A filled pill would add a fourth box to the header.
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     [
       'border-b-2 px-0.5 pb-1 text-sm transition',
@@ -72,9 +69,8 @@ function Header(): JSX.Element {
           </nav>
         )}
 
-        {/* Tighter gaps below `sm`. The brand, two switchers, the avatar and
-            the menu button together ran 13px past a 414px viewport, which is
-            an ordinary phone. */}
+        {/* Tighter gaps on small screenn, the logo, two switchers, avatar and menu button together overflowed 
+        a 414px viewport by 13px and that's an ordinary phone*/}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
           <ThemeSwitcher />
           <LanguageSwitcher compact />
@@ -128,9 +124,7 @@ function Header(): JSX.Element {
 
       {user && open && (
         <nav className="border-t border-rule px-4 py-2 lg:hidden" aria-label={t('nav.menu')}>
-          {/* The avatar leaves the bar below `sm`, so the way to the profile
-              has to be in here, and it is the one row worth showing whose
-              account this is. */}
+          {/*The avatar is hidden on small screens, so the profile link has to be here, with the account name */}
           <Link
             to="/profile"
             onClick={() => setOpen(false)}
