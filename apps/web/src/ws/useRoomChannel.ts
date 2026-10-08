@@ -21,7 +21,7 @@ export interface RevealState {
   matchCardId: number;
   isTrue: boolean;
   sourceRef: string | null;
-  /** The fact stated correctly, in the viewer's language. */
+  //The fact stated correctly in the viewer's language
   correction: string;
   results: RevealedPlayerResult[];
   nextInMs: number;
@@ -41,7 +41,7 @@ export interface RoomChannelState {
   room: RoomSummary | null;
   settings: RoomSettingsPayload | null;
   hostUserId: number | null;
-  /** Set when the host left and the room was handed to this player. */
+  // Set when the host left and the room was handed to this player.
   becameHost: boolean;
   players: PublicUser[];
   youId: number | null;
@@ -51,7 +51,7 @@ export interface RoomChannelState {
   scoreboard: ScoreboardEntry[];
   ended: EndState | null;
   myVote: Vote | null;
-  /** When the card was painted, used to measure reaction time locally. */
+  //When the card was painted, used to measure reaction time locally
   renderedAt: number | null;
 }
 
@@ -81,39 +81,30 @@ export interface RoomChannel extends RoomChannelState {
   updateSettings: (settings: RoomSettingsPayload) => void;
   leave: () => void;
   dismissError: () => void;
-  /** Leaves the final scoreboard and returns to the room lobby view. */
   dismissEnd: () => void;
   dismissHostNotice: () => void;
 }
 
-/**
- * The match channel.
- *
- * Everything here is driven by the server. The hook never decides that time is
- * up, never computes a score, and never advances a card: it renders what the
- * server has already decided. The one number it produces is the local reaction
- * time, measured from the moment the card was painted. Even that is only a
- * claim, and the server checks it against the connection's round-trip time.
- */
+/*Everything here is driven by the server. The hook never decides that time is up, never computes a score, and never advances a card, ie,
+ it renders what the server has already decided. The one number it produces is the local reaction time, measured from the moment the card was painted. 
+ Even that is only a claim, and the server checks it against the connection's round trip time.*/
 export function useRoomChannel(code: string | null): RoomChannel {
   const [state, setState] = useState<RoomChannelState>(EMPTY);
-
   const socketRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const retryRef = useRef<number | null>(null);
   const closedRef = useRef(false);
   const codeRef = useRef<string | null>(code);
   codeRef.current = code;
-
   const send = useCallback((event: ClientRoomEvent) => {
     const socket = socketRef.current;
-    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
+    if (socket?.readyState === WebSocket.OPEN) 
+      socket.send(JSON.stringify(event));
   }, []);
-
   const connect = useCallback(async () => {
-    if (closedRef.current || !codeRef.current) return;
+    if (closedRef.current || !codeRef.current) 
+      return;
     setState((current) => ({ ...current, status: 'connecting' }));
-
     let socket: WebSocket;
     try {
       socket = await openChannel('/ws/room');
@@ -121,42 +112,34 @@ export function useRoomChannel(code: string | null): RoomChannel {
       scheduleRetry();
       return;
     }
-    if (closedRef.current) {
+    if (closedRef.current) 
+    {
       socket.close();
       return;
     }
     socketRef.current = socket;
-
     socket.onopen = () => {
       attemptRef.current = 0;
       setState((current) => ({ ...current, status: 'open' }));
-      // The ticket carried whatever language was current when it was minted;
-      // re-assert it in case it changed between minting and connecting.
       socket.send(JSON.stringify({ type: 'locale:set', locale: currentLocale() }));
-      // Joining and reconnecting are the same message; the server works out
-      // which one it is from the match_players row.
-      if (codeRef.current) socket.send(JSON.stringify({ type: 'room:join', code: codeRef.current }));
+      if (codeRef.current) 
+        socket.send(JSON.stringify({ type: 'room:join', code: codeRef.current }));
     };
-
     socket.onmessage = (event) => {
       const parsed = parseEvent(event.data) as ServerRoomEvent | null;
-      if (!parsed) return;
-
+      if (!parsed) 
+        return;
       switch (parsed.type) {
         case 'ping':
           socket.send(JSON.stringify({ type: 'pong', t: parsed.t }));
           break;
-
         case 'room:state':
           setState((current) => ({
             ...current,
             error: null,
             room: parsed.room,
             settings: parsed.settings,
-            hostUserId: parsed.hostUserId,
-            // The server hands the room to the next player when the host
-            // leaves. Nothing announces it, so read it off the snapshot: the
-            // badge moved, and it landed here.
+            hostUserId: parsed.hostUserId,           
             becameHost:
               current.hostUserId !== null &&
               current.hostUserId !== parsed.hostUserId &&
@@ -169,23 +152,14 @@ export function useRoomChannel(code: string | null): RoomChannel {
             card: parsed.match?.card ?? null,
             scoreboard: parsed.match?.scoreboard ?? [],
             myVote: parsed.match?.myVote ?? null,
-            // A snapshot mid-card carries the time already elapsed, so anchor
-            // the local clock to the remaining time rather than to now.
             renderedAt:
               parsed.match?.card && parsed.match.phase === 'collecting'
                 ? Date.now() - (parsed.match.card.windowMs - parsed.match.remainingMs)
                 : null,
-            // A snapshot also arrives when the player switches language
-            // mid-reveal, so keep the reveal that is on screen rather than
-            // blanking it.
             reveal: parsed.match?.phase === 'revealing' ? current.reveal : null,
-            // The server sends a fresh lobby snapshot immediately after a
-            // match ends. Keeping `ended` means the final scoreboard stays on
-            // screen until the player dismisses it, instead of flashing past.
             ended: current.ended,
           }));
           break;
-
         case 'match:started':
           setState((current) => ({
             ...current,
@@ -196,7 +170,6 @@ export function useRoomChannel(code: string | null): RoomChannel {
             myVote: null,
           }));
           break;
-
         case 'card:served':
           setState((current) => ({
             ...current,
@@ -207,11 +180,9 @@ export function useRoomChannel(code: string | null): RoomChannel {
             renderedAt: Date.now(),
           }));
           break;
-
         case 'vote:ack':
           setState((current) => ({ ...current, myVote: parsed.choice }));
           break;
-
         case 'card:revealed':
           setState((current) => ({
             ...current,
@@ -228,11 +199,9 @@ export function useRoomChannel(code: string | null): RoomChannel {
             },
           }));
           break;
-
         case 'scoreboard:update':
           setState((current) => ({ ...current, scoreboard: parsed.scoreboard }));
           break;
-
         case 'match:ended':
           setState((current) => ({
             ...current,
@@ -248,52 +217,43 @@ export function useRoomChannel(code: string | null): RoomChannel {
             },
           }));
           break;
-
         case 'error':
           setState((current) => ({ ...current, error: parsed.code }));
           break;
-
         default:
           break;
       }
     };
-
     socket.onclose = () => {
       socketRef.current = null;
       setState((current) => ({ ...current, status: 'closed' }));
       scheduleRetry();
     };
-
-    socket.onerror = () => {
-      // `onclose` follows and owns the retry.
-    };
-
+    socket.onerror = () => {};
     function scheduleRetry() {
-      if (closedRef.current) return;
+      if (closedRef.current) 
+        return;
       const delay = backoffDelay(attemptRef.current);
       attemptRef.current += 1;
       retryRef.current = window.setTimeout(() => void connect(), delay);
     }
   }, []);
-
   useEffect(() => {
-    if (!code) return undefined;
-
+    if (!code) 
+      return undefined;
     closedRef.current = false;
     setState({ ...EMPTY });
     void connect();
-
     return () => {
       closedRef.current = true;
-      if (retryRef.current !== null) window.clearTimeout(retryRef.current);
+      if (retryRef.current !== null) 
+        window.clearTimeout(retryRef.current);
       socketRef.current?.close();
       socketRef.current = null;
     };
   }, [code, connect]);
-
-  // Tell the server when the player switches language, so the cards follow.
+  // Tell the server when the player switches language so the cards follow.
   useEffect(() => onLocaleChange((locale) => send({ type: 'locale:set', locale })), [send]);
-
   const vote = useCallback(
     (choice: Vote) => {
       setState((current) => {
@@ -305,13 +265,11 @@ export function useRoomChannel(code: string | null): RoomChannel {
           choice,
           reactionMs,
         });
-        // Optimistic only for the button state; the score comes from the server.
         return { ...current, myVote: choice };
       });
     },
     [send],
   );
-
   return {
     ...state,
     vote,

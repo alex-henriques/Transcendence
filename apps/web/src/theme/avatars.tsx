@@ -1,29 +1,16 @@
 import type { AvatarPreset } from '@wkb/shared';
 
-/**
- * The stock avatars: sixteen ink stamps, two per card suit.
- *
- * Drawing rules, so a new one does not look like a visitor:
- *
- *  - One solid mass with the detail cut out of it, never an outline. At the
- *    26px these are usually seen the holes disappear before the silhouette
- *    does, so the silhouette has to carry the whole character on its own.
- *  - Off-centre where the character allows it. A figure that stares straight
- *    out with both halves identical is an icon, not a portrait.
- *  - Printed in its suit's colour on card stock, in both themes. A suit colour
- *    measured 2.91:1 against the dark surface, which fails WCAG 1.4.11 for a
- *    graphic that carries meaning; on paper it is 5.4:1. The deck already
- *    solved this by never letting the card change colour when the lights go
- *    out, and an avatar is a small piece of the same card.
- */
-
-/** The paper showing through the ink. */
+/* The stock avatars, sixteen ink stamps, two for each card suit.
+Rules for a new one:
+- A solid shape with the details cut out. At 26px the small holes disappear first, so the silhouette has to do the work.
+- Slightly off centre where possible. A perfectly symmetrical face looks like an icon.
+- The suit's colour on card stock in both themes. On dark it only reaches 2.91:1 (fails WCAG 1.4.11); on paper it's 5.4:1.*/
 const KNOCKOUT = 'rgb(var(--card))';
 
 export interface AvatarArt {
-  /** Which suit's colour and pip this figure belongs to. */
+  //Which suit's colour and pip this figure belongs to
   suit: string;
-  /** Paths, drawn in a 24x24 box. */
+  //Paths, drawn in a 24x24 box
   draw: JSX.Element;
 }
 
@@ -32,8 +19,7 @@ export const AVATAR_ART: Record<AvatarPreset, AvatarArt> = {
     suit: 'sports',
     draw: (
       <>
-        {/* A cup, not a chess piece. The handles are what make it read as a
-            trophy at 26px rather than as a plant pot. */}
+        {/* A cup, the handles are what make it read as atrophy at 26px rather than as a plant pot */}
         <path d="M7.2 3h9.6v5.6c0 3-2.2 5.2-4.8 5.2S7.2 11.6 7.2 8.6z" fill="currentColor" />
         <path d="M7.2 4.4H5c-1.1 0-1.8.7-1.8 1.8 0 2.3 1.6 3.9 3.9 4.1" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" />
         <path d="M16.8 4.4H19c1.1 0 1.8.7 1.8 1.8 0 2.3-1.6 3.9-3.9 4.1" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" />
@@ -48,10 +34,7 @@ export const AVATAR_ART: Record<AvatarPreset, AvatarArt> = {
     suit: 'sports',
     draw: (
       <>
-        {/* A fencing mask was the first try and it read as a striped egg: the
-            mesh lines that made it a mask were the first thing to vanish at
-            26px. A cap peak is the opposite, a silhouette change that only
-            gets clearer as the drawing gets smaller. */}
+        {}
         <path d="M12.4 7.2c2.7 0 4.5 1.9 4.5 4.5 0 3-2 5.4-4.5 5.4s-4.5-2.4-4.5-5.4c0-2.6 1.8-4.5 4.5-4.5z" fill="currentColor" />
         <path d="M5.3 22.7c0-3.5 3.2-5.7 7.1-5.7s7.1 2.2 7.1 5.7z" fill="currentColor" />
         <path d="M7.3 8.6c0-2.9 2.3-4.9 5.1-4.9s5.1 2 5.1 4.9z" fill="currentColor" />
@@ -188,8 +171,7 @@ export const AVATAR_ART: Record<AvatarPreset, AvatarArt> = {
     suit: 'geography',
     draw: (
       <>
-        {/* A compass rose rather than a face on a globe. The suit crest is
-            already a meridian globe, so this had no business repeating it. */}
+        {/* A compass rose rather than a face on a globe. The suit crest is already a meridian globe */}
         <path d="M12 2.4a9.6 9.6 0 1 0 0 19.2 9.6 9.6 0 0 0 0-19.2zm0 2.3a7.3 7.3 0 1 1 0 14.6 7.3 7.3 0 0 1 0-14.6z" fill="currentColor" />
         <path d="M12 5.1l1.75 5.15L18.9 12l-5.15 1.75L12 18.9l-1.75-5.15L5.1 12l5.15-1.75z" fill="currentColor" />
       </>
@@ -222,9 +204,8 @@ export const AVATAR_ART: Record<AvatarPreset, AvatarArt> = {
     suit: 'culture',
     draw: (
       <>
-        {/* Society and culture already has the theatre mask, so the person
-            here is not masked. A note carries it instead, drawn solid and
-            large enough to survive the scoreboard. */}
+        {/* Society and culture already has the theatre mask, so the personhere is not masked. 
+        A note carries it instead, drawn solid and large enough to survive the scoreboard. */}
         <path d="M11.2 6.4c2.7 0 4.5 1.9 4.5 4.6 0 3-2 5.4-4.5 5.4s-4.5-2.4-4.5-5.4c0-2.7 1.8-4.6 4.5-4.6z" fill="currentColor" />
         <path d="M4.1 22.7c0-3.5 3.2-5.8 7.1-5.8s7.1 2.3 7.1 5.8z" fill="currentColor" />
         <ellipse cx="11.2" cy="13.1" rx="1.1" ry="1.5" fill={KNOCKOUT} />

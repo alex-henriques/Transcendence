@@ -1,25 +1,12 @@
 import type { JSX } from 'react';
 
-/**
- * The deck's suits.
- *
- * Every category is a suit, the way every card in a real deck belongs to one.
- * The suit carries a colour, a crest for the middle of the card, and a pip for
- * the corners, and those three appear together on every card of that category.
- *
- * The pip is not just a small crest. Fine line work reads at 48px and turns to
- * mud at 11px, so an engraved crest falls back to a heavier stroke or a filled
- * silhouette in the corner. That is what real court cards do, and it is what
- * keeps eight different drawing styles reading as one deck.
- *
- * Deleting this file and the "The deck" block in index.css removes the
- * decoration entirely; the cards still work, they are just plain.
- */
+/* The deck's suits: Every category is a suit, each one has a colour, a crest for the middle of the card and a pip for the corners, 
+and the three always appear together. The pip isn't just a smaller crest. Fine lines read at 48px but turn to mud at 11px, 
+so the corner version uses a heavier stroke or a filled shape.
+Deleting this file and the "The deck" block in index.css removes the decoration. The cards still work, they just look plain. */
 
 export interface Suit {
-  /** The suit's colour on the card, as RGB channels for the CSS variable. */
   rgb: string;
-  /** A washed version of the same hue, for fills behind text on the card. */
   washRgb: string;
   crest: (size: number) => JSX.Element;
   pip: (size: number) => JSX.Element;
@@ -32,7 +19,7 @@ const svg = (size: number, children: JSX.Element, extra: Record<string, string> 
 );
 
 export const SUITS: Record<string, Suit> = {
-  // Sports & Games — a die, because the category is both.
+  // Sports & Games - a die
   sports: {
     rgb: '47 111 82',
     washRgb: '219 231 222',
@@ -50,7 +37,6 @@ export const SUITS: Record<string, Suit> = {
           </g>
         </>,
       ),
-    // Five pips close up at corner size; three on the diagonal stay open.
     pip: (s) =>
       svg(
         s,
@@ -64,8 +50,7 @@ export const SUITS: Record<string, Suit> = {
         </>,
       ),
   },
-
-  // History — a rolled papyrus.
+  // History - a rolled papyrus.
   history: {
     rgb: '138 90 43',
     washRgb: '238 226 209',
@@ -93,8 +78,7 @@ export const SUITS: Record<string, Suit> = {
         </g>,
       ),
   },
-
-  // Science & Nature — orbits, engraved.
+  // Science & Nature - orbits
   science: {
     rgb: '58 107 68',
     washRgb: '222 232 224',
@@ -118,8 +102,7 @@ export const SUITS: Record<string, Suit> = {
         </g>,
       ),
   },
-
-  // Space & Astronomy — a ringed planet, engraved.
+  // Space & Astronomy - a ringed planet
   space: {
     rgb: '75 74 138',
     washRgb: '223 223 235',
@@ -145,8 +128,7 @@ export const SUITS: Record<string, Suit> = {
         </g>,
       ),
   },
-
-  // Technology & Computing — a chip, constructed.
+  // Technology & Computing - a chip
   technology: {
     rgb: '60 90 134',
     washRgb: '221 227 236',
@@ -161,8 +143,7 @@ export const SUITS: Record<string, Suit> = {
       ),
     pip: (s) => svg(s, <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />),
   },
-
-  // Arts & Literature — a quill, engraved.
+  // Arts & Literature - a quill
   arts: {
     rgb: '138 63 92',
     washRgb: '237 222 228',
@@ -185,8 +166,7 @@ export const SUITS: Record<string, Suit> = {
         />,
       ),
   },
-
-  // Geography — a meridian globe, engraved.
+  // Geography - a meridian globe
   geography: {
     rgb: '46 106 112',
     washRgb: '219 231 232',
@@ -208,8 +188,7 @@ export const SUITS: Record<string, Suit> = {
         </g>,
       ),
   },
-
-  // Society & Culture — a mask.
+  // Society & Culture - a mask.
   culture: {
     rgb: '154 90 47',
     washRgb: '240 226 211',
@@ -238,18 +217,14 @@ export const SUITS: Record<string, Suit> = {
   },
 };
 
-/** A card from a category with no suit still needs one. */
 export const DEFAULT_SUIT: Suit = SUITS.sports as Suit;
 
 export function suitFor(slug: string | undefined): Suit {
   return (slug && SUITS[slug]) || DEFAULT_SUIT;
 }
 
-/**
- * The two custom properties every card sets. Everything that should follow the
- * suit — the band, the keyline, the crest, the pips, the rules — reads these
- * rather than being passed a colour, so a card only ever names its suit once.
- */
+/* The two custom properties every card sets. Everything that should follow the suit (the band, the keyline, the crest, the pips, the rules)
+reads these rather than being passed a colour so a card only ever names its suit once. */
 export function suitVars(slug: string | undefined): Record<string, string> {
   const suit = suitFor(slug);
   return { '--cat': suit.rgb, '--cat-wash': suit.washRgb };

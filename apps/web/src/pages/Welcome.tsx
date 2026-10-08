@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { CARD_MOTION } from '../theme/cardStyle.js';
 import { SUITS, suitVars } from '../theme/suits.js';
 
-/*Instead of explaining the game in boxes, it deals real cards, ie,  a hand in the hero, then a real card the visitor can answer, which
+/* Instead of explaining the game in boxes, it deals real cards, ie, a hand in the hero, then a real card the visitor can answer, which
  teaches the one rule that matters green means you were right, true or myth is shown separately */
 function Card({
   slug,

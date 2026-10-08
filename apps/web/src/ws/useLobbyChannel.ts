@@ -10,25 +10,20 @@ interface LobbyState {
   onlineUserIds: Set<number>;
 }
 
-/**
- * The lobby channel: the live public room list plus presence.
- * Reconnects on its own, because a dropped lobby socket should never be
- * something the player has to notice or act on.
- */
+/* The lobby channel; the live public room list plus presence. Reconnects on its own, because a dropped lobby socket should never be
+something the player has to notice or act on */
 export function useLobbyChannel(enabled: boolean): LobbyState {
   const [status, setStatus] = useState<ChannelStatus>('connecting');
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [onlineUserIds, setOnline] = useState<Set<number>>(() => new Set());
-
   const socketRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const retryRef = useRef<number | null>(null);
   const closedRef = useRef(false);
-
   const connect = useCallback(async () => {
-    if (closedRef.current) return;
+    if (closedRef.current) 
+      return;
     setStatus('connecting');
-
     let socket: WebSocket;
     try {
       socket = await openChannel('/ws/lobby');
@@ -36,21 +31,20 @@ export function useLobbyChannel(enabled: boolean): LobbyState {
       scheduleRetry();
       return;
     }
-    if (closedRef.current) {
+    if (closedRef.current) 
+    {
       socket.close();
       return;
     }
     socketRef.current = socket;
-
     socket.onopen = () => {
       attemptRef.current = 0;
       setStatus('open');
     };
-
     socket.onmessage = (event) => {
       const parsed = parseEvent(event.data) as ServerLobbyEvent | null;
-      if (!parsed) return;
-
+      if (!parsed) 
+        return;
       switch (parsed.type) {
         case 'ping':
           socket.send(JSON.stringify({ type: 'pong', t: parsed.t }));
@@ -61,8 +55,8 @@ export function useLobbyChannel(enabled: boolean): LobbyState {
         case 'lobby:room_upserted':
           setRooms((current) => {
             const next = current.filter((room) => room.id !== parsed.room.id);
-            // A finished room drops out of the listing rather than lingering.
-            if (parsed.room.status === 'finished') return next;
+            if (parsed.room.status === 'finished') 
+              return next;
             return [parsed.room, ...next];
           });
           break;
@@ -81,38 +75,34 @@ export function useLobbyChannel(enabled: boolean): LobbyState {
           break;
       }
     };
-
     socket.onclose = () => {
       socketRef.current = null;
       setStatus('closed');
       scheduleRetry();
     };
-
     socket.onerror = () => {
-      // `onclose` always follows; retrying here too would double-schedule.
     };
-
-    function scheduleRetry() {
-      if (closedRef.current) return;
+    function scheduleRetry() 
+    {
+      if (closedRef.current) 
+        return;
       const delay = backoffDelay(attemptRef.current);
       attemptRef.current += 1;
       retryRef.current = window.setTimeout(() => void connect(), delay);
     }
   }, []);
-
   useEffect(() => {
-    if (!enabled) return undefined;
-
+    if (!enabled) 
+      return undefined;
     closedRef.current = false;
     void connect();
-
     return () => {
       closedRef.current = true;
-      if (retryRef.current !== null) window.clearTimeout(retryRef.current);
+      if (retryRef.current !== null) 
+        window.clearTimeout(retryRef.current);
       socketRef.current?.close();
       socketRef.current = null;
     };
   }, [enabled, connect]);
-
   return { status, rooms, onlineUserIds };
 }
