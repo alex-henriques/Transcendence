@@ -6,7 +6,7 @@ import { ApiError, api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.js';
 import { Alert, Button, Field } from '../components/ui.js';
 
-/** Demo credentials the seed creates, shown so an evaluator can start at once. */
+//Demo credentials the seed creates
 const DEMO_ACCOUNTS = ['ada@wkb.local', 'grace@wkb.local', 'alan@wkb.local'];
 const DEMO_PASSWORD = 'Password1!';
 
@@ -16,10 +16,7 @@ export function Login(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Sign-up sends the new account here rather than into the app, and passes
-  // the address along so there is only the password left to type. RequireAuth
-  // sends people here too, and puts the page they wanted in the same place, so
-  // signing in returns them to it instead of dropping them on the lobby.
+  // Sign-up redirects here with the email prefilled. RequireAuth does too, saving the page the user wanted so login returns them to it
   const handoff = location.state as
     | { registered?: boolean; email?: string; from?: string }
     | null;
@@ -30,13 +27,11 @@ export function Login(): JSX.Element {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [providers, setProviders] = useState<string[]>([]);
-
   useEffect(() => {
     const oauthError = new URLSearchParams(location.search).get('oauth_error');
     if (oauthError) 
       setFormError(oauthError === 'accountExists' ? 'auth.oauthAccountExists' : 'auth.oauthFailed');
   }, [location.search]);
-
   useEffect(() => {
     let cancelled = false;
     void api
@@ -49,28 +44,26 @@ export function Login(): JSX.Element {
       cancelled = true;
     };
   }, []);
-
-  if (user) return <Navigate to="/play" replace />;
-
+  if (user) 
+    return <Navigate to="/play" replace />;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setFormError(null);
-
-    // The same schema the server will run. Catching it here saves a round trip;
-    // the server still runs it, because a browser check is not a check.
+    // The same schema the server will run. Catching it here saves a round trip;the server still runs it because a browser check is not a check.
     const parsed = loginSchema.safeParse({ email, password });
-    if (!parsed.success) {
+    if (!parsed.success) 
+    {
       setErrors(fieldErrors(parsed.error));
       return;
     }
     setErrors({});
     setBusy(true);
-
     try {
       await login(parsed.data.email, parsed.data.password);
       navigate(from, { replace: true });
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof ApiError) 
+      {
         setErrors(error.fields);
         setFormError(error.code);
       } else {
@@ -80,7 +73,6 @@ export function Login(): JSX.Element {
       setBusy(false);
     }
   };
-
   return (
     <div className="mx-auto max-w-md animate-fade-up">
       <div className="panel-pad">

@@ -4,19 +4,9 @@ import { CARD_MOTION } from '../theme/cardStyle.js';
 import { AVATAR_ART } from '../theme/avatars.js';
 import { suitVars } from '../theme/suits.js';
 
-/**
- * The 404.
- *
- * The visitor from the space suit, adrift between two planets. It is the one
- * screen in the app where nothing useful can be shown, so it is the one place
- * the delight budget is worth spending: a player sees it rarely, and never
- * while a clock is running.
- *
- * The drawing is the same stamp used for the avatar, not a second illustration
- * of an alien, so there is only ever one of these to keep in step.
- */
+/*The 404 page. The space suit visitor adrift between two planets. It's the one screen with nothing useful to show, and it
+ never appears mid match. The drawing reuses the avatar stamp, so there's only one alien to maintain.*/
 
-/** Saturn, small. Two of them, at different sizes and drift speeds. */
 function Planet({ size, className, style }: { size: number; className: string; style: React.CSSProperties }) {
   return (
     <span aria-hidden="true" className={className} style={style}>
@@ -40,7 +30,6 @@ function Planet({ size, className, style }: { size: number; className: string; s
 export function NotFound(): JSX.Element {
   const { t } = useTranslation();
   const drift = CARD_MOTION ? 'drift' : '';
-
   return (
     <div
       className="flex min-h-[60vh] flex-col items-center justify-center gap-5 text-center"

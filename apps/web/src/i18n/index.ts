@@ -12,24 +12,25 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
 }
 
-/**
- * Language resolution order: what the user last chose, then what the browser
- * asks for, then English. Once signed in, the account's stored locale takes
- * over. See `AuthContext`.
- */
+/* Language order, ie, the user's last choice, then the browser's, then English.
+ A signed-in account's saved language overrides all of these (see 'AuthContext'). */
 function initialLocale(): Locale {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (isLocale(saved)) return saved;
+    if (isLocale(saved)) 
+      return saved;
   } catch {
-    // Private mode or blocked storage: fall through to the browser's choice.
+    // Private mode or blocked storage; fall through to the browser's choice
   }
 
-  for (const candidate of navigator.languages ?? []) {
-    if (isLocale(candidate)) return candidate;
+  for (const candidate of navigator.languages ?? []) 
+  {
+    if (isLocale(candidate)) 
+      return candidate;
     const base = candidate.split('-')[0];
     const match = LOCALES.find((locale) => locale.split('-')[0] === base);
-    if (match) return match;
+    if (match) 
+      return match;
   }
   return DEFAULT_LOCALE;
 }
@@ -55,8 +56,6 @@ export function setLocale(locale: Locale): void {
   } catch {
     // Preference simply will not persist; the app still works.
   }
-  // Cards are rendered by the server in the socket's language, so an open
-  // room channel has to be told as well.
   emitLocaleChange(locale);
 }
 

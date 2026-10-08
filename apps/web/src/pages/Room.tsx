@@ -24,16 +24,11 @@ export function Room(): JSX.Element {
   const { code } = useParams<{ code: string }>();
   const channel = useRoomChannel(code ?? null);
   const { t } = useTranslation();
-
-  // No timed bounce any more. These cases now get a screen that says what
-  // happened and offers the way out, and yanking it away after 1800ms would
-  // mean the player never finished reading why they had been moved.
-
-  // Which false belief brought the player here decides what the card says.
-  // The verdict is Myth either way, because in all three cases the room they
-  // thought they were joining is not there.
+  /* No timed redirect; these cases show a screen explaining what happened, and a 1800ms bounce would cut off the reading. 
+  The card text depends on which false belief brought the player here. The verdict is always Myth, since in all three cases the room isn't there.*/
   const deadEnd = (): { statement: string; body: string } | null => {
-    if (!code) return { statement: t('dead.roomStatement', { code: '??????' }), body: t('dead.roomBody') };
+    if (!code) 
+      return { statement: t('dead.roomStatement', { code: '??????' }), body: t('dead.roomBody') };
     switch (channel.error) {
       case 'error.room.removed':
         return { statement: t('dead.removedStatement'), body: t('dead.removedBody') };
@@ -45,9 +40,9 @@ export function Room(): JSX.Element {
         return null;
     }
   };
-
   const dead = deadEnd();
-  if (dead) {
+  if (dead) 
+    {
     return (
       <DeadEnd
         statement={dead.statement}
@@ -57,8 +52,8 @@ export function Room(): JSX.Element {
       />
     );
   }
-
-  if (!channel.room) {
+  if (!channel.room) 
+  {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-muted">
         {channel.error ? (
@@ -72,16 +67,11 @@ export function Room(): JSX.Element {
       </div>
     );
   }
-
   const inMatch = channel.phase !== null && channel.phase !== 'scoreboard';
-
-  // Only once a room has been seen: before that the spinner above is already
-  // saying the same thing, and saying it twice would be worse than not at all.
+  // Only once a room has been seen, before that the spinner above is already saying the same thing
   const away = channel.status !== 'open';
-
   return (
-    // No entrance here: each view below brings its own, and the banners mount
-    // on their own schedule. Animating the wrapper too made them compound.
+   // The wrapper isn't animated because each view and banner below already has its own entrance and animating both made them stack.
     <div>
       <ConnectionLost away={away} />
 
@@ -122,36 +112,31 @@ export function Room(): JSX.Element {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Lobby, before the match starts
-// ---------------------------------------------------------------------------
-
+// Lobby before the match starts
 function RoomLobby({ channel }: { channel: RoomChannel }): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [bots, setBots] = useState<BotRow[]>([]);
   const [copied, setCopied] = useState(false);
-
   const isHost = channel.hostUserId === channel.youId;
   const room = channel.room;
-
   useEffect(() => {
     let cancelled = false;
     void api
       .get<{ bots: BotRow[] }>('/api/catalog/bots')
       .then((payload) => {
-        if (!cancelled) setBots(payload.bots);
+        if (!cancelled) 
+          setBots(payload.bots);
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, []);
-
   const inRoom = new Set(channel.players.map((player) => player.id));
-
   const copyCode = () => {
-    if (!room) return;
+    if (!room) 
+      return;
     void navigator.clipboard
       ?.writeText(room.code)
       .then(() => {
@@ -160,14 +145,12 @@ function RoomLobby({ channel }: { channel: RoomChannel }): JSX.Element {
       })
       .catch(() => undefined);
   };
-
   const leave = () => {
     channel.leave();
     navigate('/play');
   };
-
-  if (!room) return <Spinner />;
-
+  if (!room) 
+    return <Spinner />;
   return (
     <div className="animate-fade-up grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="space-y-6">
@@ -337,7 +320,7 @@ function RoomLobby({ channel }: { channel: RoomChannel }): JSX.Element {
   );
 }
 
-/** In-room customization: the host can retune without recreating the room. */
+// The host can retune the room without having to recreat it
 function SettingsEditor({
   settings,
   onSave,
@@ -348,17 +331,13 @@ function SettingsEditor({
   const { t } = useTranslation();
   const [draft, setDraft] = useState(settings);
   const [saved, setSaved] = useState(false);
-
   useEffect(() => setDraft(settings), [settings]);
-
   const save = () => {
     onSave(draft);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
   };
-
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings), [draft, settings]);
-
   return (
     <div className="panel-pad">
       <h2 className="mb-4 text-sm font-semibold text-muted">
@@ -419,31 +398,24 @@ function SettingsEditor({
   );
 }
 
-// ---------------------------------------------------------------------------
 // The match
-// ---------------------------------------------------------------------------
-
 function MatchView({ channel }: { channel: RoomChannel }): JSX.Element {
   const { t } = useTranslation();
-
-  if (channel.phase === 'countdown') {
+  if (channel.phase === 'countdown') 
+  {
     return <Countdown />;
   }
-
   const { card, reveal, myVote, renderedAt } = channel;
-  if (!card) {
+  if (!card) 
+  {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-muted">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
-
   const revealing = reveal !== null && reveal.matchCardId === card.matchCardId;
-  const myResult = revealing
-    ? reveal.results.find((result) => result.userId === channel.youId)
-    : undefined;
-
+  const myResult = revealing ? reveal.results.find((result) => result.userId === channel.youId) : undefined;
   return (
     <div className="animate-fade-up grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="space-y-5">
@@ -459,12 +431,7 @@ function MatchView({ channel }: { channel: RoomChannel }): JSX.Element {
           </div>
         </div>
 
-        {/* Keyed on the card, so every card is a fresh element and the deal
-            replays instead of running once for the whole match. The key sits
-            here rather than inside CardFace: at the call site it remounts the
-            component, which is unambiguous, where a key on one node buried in
-            that component's output depends on how the nodes around it happen
-            to be arranged. */}
+        {/*Keyed on the card so the deal animation replays for every card */}
         <CardFace key={card.matchCardId} card={card} dimmed={revealing} />
 
         {revealing ? (
@@ -520,44 +487,28 @@ function Countdown(): JSX.Element {
 function RevealPanel({ channel }: { channel: RoomChannel }): JSX.Element {
   const { t } = useTranslation();
   const reveal = channel.reveal;
-  if (!reveal) return <></>;
-
+  if (!reveal) 
+    return <></>;
   const byId = new Map(channel.players.map((player) => [player.id, player]));
   const mine = reveal.results.find((result) => result.userId === channel.youId);
-
-  /**
-   * Two separate facts, told in two separate ways.
-   *
-   * The panel's colour answers "did I get it right?" and nothing else: green
-   * for yes, red for no, plain for a card that ran out before an answer. What
-   * the statement turned out to be is a different question, and it is told in
-   * words and in the answer's own colour, because a myth is not a mistake —
-   * calling one out correctly is a win, and the old panel painted that win
-   * red purely because the sentence on the card was false.
-   */
-  const outcome: 'right' | 'wrong' | 'none' =
-    mine && mine.correct !== null ? (mine.correct ? 'right' : 'wrong') : 'none';
-
+  /* Panel colour means "did I get it right?" (green, red, or plain if time ran out). Whether the statement was true or a myth is shown in words so
+ correctly spotting a myth is never painted red. */
+  const outcome: 'right' | 'wrong' | 'none' = mine && mine.correct !== null ? (mine.correct ? 'right' : 'wrong') : 'none';
   const FRAME = {
     right: 'border-correct bg-correct-wash',
     wrong: 'border-wrong bg-wrong-wash',
     none: 'border-rule-strong bg-surface',
   } as const;
-
   const HEADLINE = {
     right: { key: 'match.correct', tone: 'text-correct' },
     wrong: { key: 'match.wrong', tone: 'text-wrong' },
     none: { key: 'match.noAnswer', tone: 'text-muted' },
   } as const;
-
   const headline = HEADLINE[outcome];
-
   return (
     <div className="animate-reveal space-y-4">
       <div className={['stamp rounded border-2 px-5 py-4 text-center', FRAME[outcome]].join(' ')}>
-        {/* The outcome leads, because it is the thing the player is waiting
-            for. A spectator with no result of their own gets the neutral
-            frame and skips straight to what the statement was. */}
+        {/* Outcome first, since that's what the player is waiting for. Spectators have no result so they get a neutral frame.*/}
         {mine && (
           <p className={`text-2xl font-semibold ${headline.tone}`}>
             {t(headline.key)}
@@ -645,26 +596,21 @@ function RevealPanel({ channel }: { channel: RoomChannel }): JSX.Element {
   );
 }
 
-// ---------------------------------------------------------------------------
 // After the last card
-// ---------------------------------------------------------------------------
-
 function FinalScoreboard({ channel }: { channel: RoomChannel }): JSX.Element {
     const { t } = useTranslation();
   const { user, patchUser } = useAuth();
   const ended = channel.ended;
   const endedMatchId = ended?.matchId ?? null;
-
-  // The browser's copy of the account was taken at sign-in, so the XP this
-  // match just paid out is not in it. Ask the server for the fresh copy once,
-  // or the progress line below and the profile page show the XP from before.
   useEffect(() => {
-    if (endedMatchId === null) return undefined;
+    if (endedMatchId === null) 
+      return undefined;
     let cancelled = false;
     void api
       .get<{ user: SessionUser }>('/api/auth/me')
       .then(({ user: fresh }) => {
-        if (!cancelled) patchUser(fresh);
+        if (!cancelled) 
+          patchUser(fresh);
       })
       .catch(() => undefined);
     return () => {
@@ -673,12 +619,10 @@ function FinalScoreboard({ channel }: { channel: RoomChannel }): JSX.Element {
   }, [endedMatchId, patchUser]);
   if (!ended) 
     return <></>;
-
   const top = ended.scoreboard[0];
   const tied = ended.scoreboard.filter((entry) => entry.rank === 1).length > 1;
   const myAward = ended.awards.find((award) => award.userId === channel.youId);
   const advanced = ended.tournament?.advancedUserId === channel.youId;
-
   return (
     <div className="mx-auto max-w-2xl animate-fade-up space-y-6">
       <div className="text-center">
@@ -707,9 +651,6 @@ function FinalScoreboard({ channel }: { channel: RoomChannel }): JSX.Element {
                 {myAward.achievements.map((achievement, index) => (
                   <li
                     key={achievement.slug}
-                    // Unlocking something is the rarest moment in the app, and
-                    // the one place a little generosity is earned. They arrive
-                    // one after another rather than all at once.
                     className="animate-fade-up rounded-xl border border-spot/35 bg-spot-wash px-3 py-2 text-left"
                     style={{ animationDelay: `${180 + index * 60}ms` }}
                   >

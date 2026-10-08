@@ -6,14 +6,8 @@ interface Section {
   body: string[];
 }
 
-/**
- * Privacy Policy and Terms of Service.
- *
- * The subject rejects placeholder pages, so the copy is specific to what this
- * application actually stores and does. It lives in the translation files
- * rather than in the component, which is also what keeps it translatable in
- * all three languages.
- */
+/* Privacy Policy and Terms of Service. The text describes what the app really does. It's in the translation files, 
+which keeps it available in all three languages. */
 function LegalPage({ scope }: { scope: 'privacy' | 'terms' }): JSX.Element {
   const { t } = useTranslation();
   const sections = t(`legal.${scope}.sections`, { returnObjects: true }) as Section[];
@@ -22,7 +16,6 @@ function LegalPage({ scope }: { scope: 'privacy' | 'terms' }): JSX.Element {
     month: 'long',
     day: 'numeric',
   });
-
   return (
     <article className="mx-auto max-w-3xl animate-fade-up">
       <header className="mb-8">

@@ -11,33 +11,29 @@ export function Signup(): JSX.Element {
   const { t } = useTranslation();
   const { user, signup } = useAuth();
   const navigate = useNavigate();
-
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  if (user) return <Navigate to="/play" replace />;
-
+  if (user) 
+    return <Navigate to="/play" replace />;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setFormError(null);
-
     const locale = currentLocale();
     const parsed = signupSchema.safeParse({ email, password, displayName, locale });
-    if (!parsed.success) {
+    if (!parsed.success) 
+    {
       setErrors(fieldErrors(parsed.error));
       return;
     }
     setErrors({});
     setBusy(true);
-
     try {
       await signup(parsed.data.email, parsed.data.password, parsed.data.displayName, locale);
-      // Straight to the sign-in screen, with the address carried across so
-      // there is only the password left to type.
+      // Straight to the sign-in screen with the address carried across so there is only the password left to type.
       navigate('/login', { replace: true, state: { registered: true, email: parsed.data.email } });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -50,7 +46,6 @@ export function Signup(): JSX.Element {
       setBusy(false);
     }
   };
-
   return (
     <div className="mx-auto max-w-md animate-fade-up">
       <div className="panel-pad">

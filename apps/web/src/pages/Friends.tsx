@@ -34,15 +34,12 @@ function PresenceDot({ online }: { online: boolean }): JSX.Element {
 
 export function Friends(): JSX.Element {
   const { t } = useTranslation();
-  // The lobby socket is what makes presence live rather than a page refresh.
   const { onlineUserIds } = useLobbyChannel(true);
-
   const [lists, setLists] = useState<FriendLists>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Person[] | null>(null);
   const [searching, setSearching] = useState(false);
-
   const load = useCallback(async () => {
     try {
       setLists(await api.get<FriendLists>('/api/friends'));
@@ -50,19 +47,17 @@ export function Friends(): JSX.Element {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     void load();
   }, [load]);
-
-  // Debounced search, so typing does not fire a request per keystroke.
+  // Debounced search; typing does not fire a request per keystroke
   useEffect(() => {
     const term = query.trim();
-    if (term.length === 0) {
+    if (term.length === 0) 
+    {
       setResults(null);
       return undefined;
     }
-
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setSearching(true);
@@ -72,27 +67,22 @@ export function Friends(): JSX.Element {
         .catch(() => undefined)
         .finally(() => setSearching(false));
     }, 300);
-
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
   }, [query]);
-
   const isOnline = (person: Person) => person.online || onlineUserIds.has(person.id);
-
   const act = async (action: () => Promise<unknown>) => {
     await action().catch(() => undefined);
     await load();
   };
-
   const knownIds = new Set([
     ...lists.accepted.map((p) => p.id),
     ...lists.incoming.map((p) => p.id),
     ...lists.outgoing.map((p) => p.id),
     ...lists.blocked.map((p) => p.id),
   ]);
-
   const row = (person: Person, actions: JSX.Element) => (
     <li
       key={person.id}
@@ -111,7 +101,6 @@ export function Friends(): JSX.Element {
       {actions}
     </li>
   );
-
   return (
     <div className="mx-auto max-w-2xl animate-fade-up space-y-6">
       <PageTitle title={t('friends.title')} subtitle={t('friends.subtitle')} />

@@ -53,16 +53,15 @@ function Stat({ label, value }: { label: string; value: string | number }): JSX.
   );
 }
 
-/** A compact sparkline of the last matches; no chart library needed. */
+// A compact sparkline of the last matches; no chart library needed
 function Progression({ rows }: { rows: HistoryRow[] }): JSX.Element {
   const { t } = useTranslation();
   const points = [...rows].reverse();
-  if (points.length < 2) return <></>;
-
+  if (points.length < 2) 
+    return <></>;
   const max = Math.max(...points.map((row) => row.score), 1);
   const min = Math.min(...points.map((row) => row.score), 0);
   const span = Math.max(1, max - min);
-
   const path = points
     .map((row, index) => {
       const x = (index / (points.length - 1)) * 100;
@@ -70,7 +69,6 @@ function Progression({ rows }: { rows: HistoryRow[] }): JSX.Element {
       return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(' ');
-
   return (
     <div className="panel-pad">
       <h2 className="mb-3 text-sm font-semibold text-muted">
@@ -94,7 +92,6 @@ export function Stats(): JSX.Element {
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [achievements, setAchievements] = useState<AchievementRow[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -103,12 +100,14 @@ export function Stats(): JSX.Element {
           api.get<{ stats: UserStats; history: HistoryRow[] }>('/api/stats/me'),
           api.get<{ achievements: AchievementRow[] }>('/api/stats/achievements'),
         ]);
-        if (cancelled) return;
+        if (cancelled) 
+          return;
         setStats(mine.stats);
         setHistory(mine.history);
         setAchievements(badges.achievements);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) 
+          setLoading(false);
       }
     })();
     return () => {
@@ -116,19 +115,19 @@ export function Stats(): JSX.Element {
     };
   }, []);
 
-  if (loading) {
+  if (loading) 
+  {
     return (
       <div className="flex justify-center py-16">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
-  if (!stats) return <EmptyState>{t('stats.noHistory')}</EmptyState>;
-
+  if (!stats) 
+    return <EmptyState>{t('stats.noHistory')}</EmptyState>;
   const percent = (value: number) => `${Math.round(value * 100)}%`;
   const dateOf = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' }) : '—';
-
   return (
     <div className="animate-fade-up space-y-6">
       <PageTitle title={t('stats.title')} />

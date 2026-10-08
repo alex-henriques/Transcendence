@@ -5,24 +5,8 @@ import { useAuth } from '../auth/AuthContext.js';
 import { CARD_MOTION } from '../theme/cardStyle.js';
 import { SUITS, suitVars } from '../theme/suits.js';
 
-/**
- * The front of the house.
- *
- * The first version of this page explained the game in three equal boxes and
- * then listed its features in four more. It was accurate and completely inert:
- * a reader learned that cards are dealt and answered without ever seeing one.
- *
- * So the page deals instead. The hero is a hand of real cards, and the section
- * under it is a live card the visitor can actually answer, which teaches the
- * one rule worth teaching before signing up: green means you were right, and
- * what the statement turned out to be is told separately, in its own colour.
- *
- * Every drawing here is the game's own: the same `.card-face`, the same eight
- * suits. Nothing is a picture of the product, so nothing can go stale when the
- * product changes.
- */
-
-/** A card face, as the game paints it, at whatever size the layout gives it. */
+/*Instead of explaining the game in boxes, it deals real cards, ie,  a hand in the hero, then a real card the visitor can answer, which
+ teaches the one rule that matters green means you were right, true or myth is shown separately */
 function Card({
   slug,
   statement,
@@ -40,7 +24,6 @@ function Card({
 }): JSX.Element {
   const { t } = useTranslation();
   const suit = SUITS[slug];
-
   return (
     <article
       className={`card-face flex items-center px-5 py-8 sm:px-7 ${dimmed ? 'opacity-70' : ''} ${className}`}
@@ -78,21 +61,10 @@ function Card({
   );
 }
 
-/**
- * The hand. Three cards squared off behind each other rather than fanned:
- * a stack on a table does not splay unless something pushes it, and the two
- * underneath are there to say "there are more of these", not to be read.
- */
+/*3 cards are stacked. The 2 underneath just hint that there are more cards. */
 function Hand(): JSX.Element {
   const { t } = useTranslation();
-
   return (
-    /* The two cards underneath are inset by the wrapper's own padding, not
-       `inset-0`. An absolutely positioned child fills the padding box, so
-       under `inset-0` they were already the full width of the wrapper before
-       being nudged and turned, and the reserved space reserved nothing. A
-       rotation also sweeps its corners outward, which is why the reserve is
-       wider than the offsets alone would suggest. */
     <div className="relative mx-auto w-full max-w-[25rem] pb-12 pr-12 lg:mr-0">
       <div
         aria-hidden="true"
@@ -117,12 +89,7 @@ function Hand(): JSX.Element {
   );
 }
 
-/**
- * The eight cards the demonstration deals from, one per suit.
- *
- * Half are true and half are myths on purpose. A demo that is always a myth
- * teaches the visitor to press Myth, which is the opposite of the game.
- */
+//Half are true and half are myths on purpose.
 const DEMO = [
   { slug: 'science', isTrue: false, index: '07' },
   { slug: 'space', isTrue: true, index: '12' },
@@ -134,28 +101,19 @@ const DEMO = [
   { slug: 'culture', isTrue: true, index: '26' },
 ] as const;
 
-/** The demonstration: one card, two buttons, and the verdict the game gives. */
 function TryIt(): JSX.Element {
   const { t } = useTranslation();
   const [dealt, setDealt] = useState(0);
   const [answer, setAnswer] = useState<'truth' | 'myth' | null>(null);
-
-  // Deal in order and wrap, so a visitor who keeps pressing sees all eight
-  // suits and never the same card twice in a row.
   const card = DEMO[dealt % DEMO.length]!;
   const correct = answer === (card.isTrue ? 'truth' : 'myth');
-
   const deal = () => {
     setDealt((n) => n + 1);
     setAnswer(null);
   };
-
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,22rem)_minmax(0,24rem)] md:items-center md:gap-10">
       <Card
-        /* Keyed on the deal so React rebuilds the face and the deal animation
-           runs again; without it the statement swaps inside a card that never
-           moved, and nothing looks dealt. */
         key={dealt}
         slug={card.slug}
         statement={t(`welcome.cards.${card.slug}.statement`)}
@@ -195,8 +153,7 @@ function TryIt(): JSX.Element {
             <p className={`text-2xl font-semibold ${correct ? 'text-correct' : 'text-wrong'}`}>
               {t(correct ? 'match.correct' : 'match.wrong')}
             </p>
-            {/* Green or red says whether you were right. This line, always in
-                the answer pair's colours, says what the statement was. */}
+            {/* Green or red says whether you were right. This line, always in the answer pair's colours says what the statement was. */}
             <p
               className={`mt-1.5 text-sm font-semibold uppercase tracking-[0.08em] ${
                 card.isTrue ? 'text-truth' : 'text-myth'
@@ -227,7 +184,6 @@ const DECK = ['sports', 'history', 'science', 'space', 'technology', 'arts', 'ge
 export function Welcome(): JSX.Element {
   const { t } = useTranslation();
   const { user } = useAuth();
-
   const cta = (
     <Link
       to={user ? '/play' : '/signup'}
@@ -236,10 +192,9 @@ export function Welcome(): JSX.Element {
       {user ? t('welcome.ctaPlay') : t('welcome.ctaSignup')}
     </Link>
   );
-
   return (
     <div className="space-y-16 sm:space-y-24">
-      {/* 1. Hero: split, copy left, the hand right. -------------------------- */}
+      {/* split, copy left,  the hand right.*/}
       <section className="grid items-center gap-12 pt-2 lg:grid-cols-[1fr_0.9fr] lg:gap-16">
         <div className="animate-fade-up">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-spot">
@@ -264,7 +219,7 @@ export function Welcome(): JSX.Element {
         <Hand />
       </section>
 
-      {/* 2. A card you can actually answer. --------------------------------- */}
+      {/*A card you can actually answer*/}
       <section>
         <h2 className="mb-2 text-balance text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
           {t('welcome.tryTitle')}
@@ -275,7 +230,7 @@ export function Welcome(): JSX.Element {
         <TryIt />
       </section>
 
-      {/* 3. The deck, as a strip you scroll rather than a grid. -------------- */}
+      {/* The deck, as a strip you scroll rather than a grid*/}
       <section>
         <h2 className="text-balance text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
           {t('welcome.deckTitle')}
@@ -303,7 +258,7 @@ export function Welcome(): JSX.Element {
         </ul>
       </section>
 
-      {/* 4. The rest of the box: one tall claim, two short ones. ------------- */}
+      {/*The rest of the box, one tall claim, two short ones */}
       <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="panel-pad flex flex-col justify-between gap-8 lg:p-8">
           <div>
@@ -314,9 +269,7 @@ export function Welcome(): JSX.Element {
               {t('welcome.roomBody')}
             </p>
           </div>
-          {/* The invite code, set the way the room sets it. This is the
-              object the paragraph is describing, so it is worth showing
-              rather than describing again in a large number. */}
+          {/* The invite code, set the way the room sets it.*/}
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
             <span className="data rounded border border-rule-strong bg-surface-2 px-4 py-2.5 text-3xl font-semibold tracking-[0.18em] text-ink sm:text-4xl">
               {t('welcome.roomCode')}
@@ -340,7 +293,7 @@ export function Welcome(): JSX.Element {
         </div>
       </section>
 
-      {/* 5. Closing: the title, asked back. --------------------------------- */}
+      {/*Closing*/}
       <section className="border-t border-rule pt-12">
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:justify-between">
           <h2 className="max-w-[16ch] text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.03em] text-ink sm:text-6xl">

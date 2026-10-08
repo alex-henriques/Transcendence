@@ -9,21 +9,19 @@ export function Lobby(): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { status, rooms } = useLobbyChannel(true);
-
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
-
   const join = (event: FormEvent) => {
     event.preventDefault();
     const parsed = roomCodeSchema.safeParse(code);
-    if (!parsed.success) {
+    if (!parsed.success) 
+    {
       setCodeError(parsed.error.issues[0]?.message ?? 'validation.roomCode.length');
       return;
     }
     setCodeError(null);
     navigate(`/room/${parsed.data}`);
   };
-
   return (
     <div className="animate-fade-up">
       <PageTitle

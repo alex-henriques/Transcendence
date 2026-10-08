@@ -19,11 +19,8 @@ interface CategoryRow {
   facts: { easy: number; medium: number; hard: number };
 }
 
-/**
- * Room creation is also the customization screen (module 12): mode, difficulty,
- * category selection, match length, player cap and the two room modifiers.
- * Every control starts from a documented default, which the subject requires.
- */
+/*Room creation is also the customisation screen; mode, difficulty,
+ category selection, match length, player cap and the two room modifiers. Every control starts from a documented default*/
 const DEFAULTS = {
   visibility: 'public' as const,
   mode: 'general' as const,
@@ -36,7 +33,6 @@ const DEFAULTS = {
 export function CreateRoom(): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [name, setName] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>(DEFAULTS.visibility);
@@ -48,7 +44,6 @@ export function CreateRoom(): JSX.Element {
   const [answerWindowMs, setWindow] = useState(DIFFICULTY_PRESETS[DEFAULTS.difficulty].answerWindowMs);
   const [comboEnabled, setCombo] = useState(DEFAULTS.comboEnabled);
   const [doubleCardEnabled, setDouble] = useState(DEFAULTS.doubleCardEnabled);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +53,8 @@ export function CreateRoom(): JSX.Element {
     void api
       .get<{ categories: CategoryRow[] }>('/api/catalog/categories')
       .then((payload) => {
-        if (!cancelled) setCategories(payload.categories);
+        if (!cancelled) 
+          setCategories(payload.categories);
       })
       .catch(() => undefined);
     return () => {
@@ -66,7 +62,7 @@ export function CreateRoom(): JSX.Element {
     };
   }, []);
 
-  /** Picking a difficulty resets the window and length to that preset. */
+  //Picking a difficulty resets the window and length to that preset
   const applyDifficulty = (next: Difficulty) => {
     setDifficulty(next);
     setWindow(DIFFICULTY_PRESETS[next].answerWindowMs);
@@ -80,17 +76,15 @@ export function CreateRoom(): JSX.Element {
 
   const toggleCategory = (id: number) => {
     setCategoryIds((current) => {
-      // A single-category room holds exactly one; a general room may hold many.
-      if (mode === 'category') return current[0] === id ? [] : [id];
+        if (mode === 'category') 
+          return current[0] === id ? [] : [id];
       return current.includes(id) ? current.filter((value) => value !== id) : [...current, id];
     });
   };
-
   const switchMode = (next: 'general' | 'category') => {
     setMode(next);
     setCategoryIds((current) => (next === 'category' ? current.slice(0, 1) : current));
   };
-
   const reset = () => {
     setVisibility(DEFAULTS.visibility);
     setMode(DEFAULTS.mode);
@@ -102,11 +96,9 @@ export function CreateRoom(): JSX.Element {
     setErrors({});
     setFormError(null);
   };
-
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setFormError(null);
-
     const payload = {
       name,
       visibility,
@@ -121,30 +113,30 @@ export function CreateRoom(): JSX.Element {
         doubleCardEnabled,
       },
     };
-
     const parsed = createRoomSchema.safeParse(payload);
-    if (!parsed.success) {
+    if (!parsed.success) 
+    {
       setErrors(fieldErrors(parsed.error));
       return;
     }
     setErrors({});
     setBusy(true);
-
     try {
       const created = await api.post<{ room: { code: string } }>('/api/rooms', parsed.data);
       navigate(`/room/${created.room.code}`, { replace: true });
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof ApiError) 
+      {
         setErrors(error.fields);
         setFormError(error.code);
-      } else {
+      } else 
+      {
         setFormError('error.internal');
       }
     } finally {
       setBusy(false);
     }
   };
-
   const optionClass = (active: boolean) =>
     [
       'flex-1 rounded-xl border px-4 py-3 text-left transition',
@@ -152,7 +144,6 @@ export function CreateRoom(): JSX.Element {
         ? 'border-spot bg-spot-wash text-ink'
         : 'border-rule-strong bg-surface text-muted hover:border-rule-strong hover:text-ink',
     ].join(' ');
-
   return (
     <div className="mx-auto max-w-3xl animate-fade-up">
       <PageTitle title={t('createRoom.title')} />

@@ -64,7 +64,6 @@ export function Tournaments(): JSX.Element {
   const { t } = useTranslation();
   const [rows, setRows] = useState<TournamentRow[] | null>(null);
   const [creating, setCreating] = useState(false);
-
   const [name, setName] = useState('');
   const [size, setSize] = useState<4 | 8>(4);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -72,28 +71,24 @@ export function Tournaments(): JSX.Element {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const navigate = useNavigate();
-
   const load = useCallback(async () => {
     const payload = await api.get<{ tournaments: TournamentRow[] }>('/api/tournaments');
     setRows(payload.tournaments);
   }, []);
-
   useEffect(() => {
     void load().catch(() => setRows([]));
   }, [load]);
-
   const create = async (event: FormEvent) => {
     event.preventDefault();
     setFormError(null);
-
     const parsed = createTournamentSchema.safeParse({ name, size, difficulty, cardCount });
-    if (!parsed.success) {
+    if (!parsed.success) 
+    {
       setErrors(fieldErrors(parsed.error));
       return;
     }
     setErrors({});
     setCreating(true);
-
     try {
       const created = await api.post<{ tournament: Bracket }>('/api/tournaments', parsed.data);
       navigate(`/tournaments/${created.tournament.id}`);
@@ -103,7 +98,6 @@ export function Tournaments(): JSX.Element {
       setCreating(false);
     }
   };
-
   return (
     <div className="mx-auto max-w-3xl animate-fade-up space-y-6">
       <PageTitle title={t('tournament.title')} subtitle={t('tournament.subtitle')} />
@@ -212,8 +206,6 @@ export function Tournaments(): JSX.Element {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 export function TournamentDetail(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
@@ -221,24 +213,22 @@ export function TournamentDetail(): JSX.Element {
   const [bracket, setBracket] = useState<Bracket | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id) 
+      return;
     const payload = await api.get<{ tournament: Bracket }>(`/api/tournaments/${id}`);
     setBracket(payload.tournament);
   }, [id]);
-
   useEffect(() => {
     void load().catch(() => setError('error.notFound'));
   }, [load]);
-
-  // A running bracket advances when other matches finish elsewhere, so poll.
+  // A running bracket advances when other matches finish elsewhere so poll.
   useEffect(() => {
-    if (bracket?.status !== 'running') return undefined;
+    if (bracket?.status !== 'running') 
+      return undefined;
     const timer = window.setInterval(() => void load().catch(() => undefined), 5000);
     return () => window.clearInterval(timer);
   }, [bracket?.status, load]);
-
   const act = async (call: () => Promise<unknown>) => {
     setError(null);
     setBusy(true);
@@ -251,11 +241,9 @@ export function TournamentDetail(): JSX.Element {
       setBusy(false);
     }
   };
-
-  // The same component as the room dead end: a bracket that is not there and
-  // a table that is not there are the same disappointment, so they get the
-  // same card rather than a second screen that has to be kept in step.
-  if (error && !bracket) {
+  //Reuses the room dead end card, a missing bracket and a missing room are the same case
+  if (error && !bracket) 
+  {
     return (
       <DeadEnd
         statement={t('dead.tournamentStatement')}
@@ -266,17 +254,16 @@ export function TournamentDetail(): JSX.Element {
       />
     );
   }
-  if (!bracket) {
+  if (!bracket) 
+  {
     return (
       <div className="flex justify-center py-16">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
-
   const registered = bracket.participants.some((participant) => participant.id === user?.id);
   const seatsLeft = bracket.size - bracket.participants.length;
-
   const myReadyMatch = bracket.rounds
     .flat()
     .find(
@@ -284,15 +271,16 @@ export function TournamentDetail(): JSX.Element {
         (matchup.status === 'ready' || matchup.status === 'playing') &&
         matchup.players.some((player) => player.id === user?.id),
     );
-
   const roundLabel = (roundIndex: number, total: number) => {
     const fromEnd = total - roundIndex;
-    if (fromEnd === 1) return t('tournament.final');
-    if (fromEnd === 2) return t('tournament.semifinal');
-    if (fromEnd === 3) return t('tournament.quarterfinal');
+    if (fromEnd === 1) 
+      return t('tournament.final');
+    if (fromEnd === 2) 
+      return t('tournament.semifinal');
+    if (fromEnd === 3) 
+      return t('tournament.quarterfinal');
     return t('tournament.round', { number: roundIndex + 1 });
   };
-
   return (
     <div className="mx-auto max-w-4xl animate-fade-up space-y-6">
       <PageTitle

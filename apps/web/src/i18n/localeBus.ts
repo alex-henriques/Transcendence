@@ -1,13 +1,6 @@
 import type { Locale } from '@wkb/shared';
 
-/**
- * A one-line pub/sub for language changes.
- *
- * The language switcher lives in the header and the room socket lives in the
- * room page; neither is an ancestor of the other. Rather than thread a context
- * through the whole tree for a single event, anything that needs to react to a
- * language change subscribes here.
- */
+//A tiny pub/sub for language changes, so the header switcher and the room socket (which don't contain each other) can communicate without a shared context.
 type Listener = (locale: Locale) => void;
 
 const listeners = new Set<Listener>();
@@ -20,5 +13,6 @@ export function onLocaleChange(listener: Listener): () => void {
 }
 
 export function emitLocaleChange(locale: Locale): void {
-  for (const listener of listeners) listener(locale);
+  for (const listener of listeners) 
+    listener(locale);
 }

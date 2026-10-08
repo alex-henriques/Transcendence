@@ -17,25 +17,15 @@ import { useTheme, type Theme } from '../theme/ThemeContext.js';
 import { Alert, Button, Field } from '../components/ui.js';
 import { AvatarPicker } from '../components/AvatarPicker.js';
 
-/**
- * A miniature of the room in a given theme, painted in fixed colours.
- *
- * Fixed on purpose: this is the one place in the app where a colour must not
- * follow the current theme, because its whole job is to show what a theme you
- * are *not* in looks like. The values are the same tokens the stylesheet
- * defines, written out because a preview of "dark" rendered in the light
- * palette would be a picture of nothing.
- */
+// A miniature of the room in a given theme in fixed colours. They ignore the current theme on purpose, since the preview has to show a theme you're not in
 const ROOMS = {
   light: { paper: '#ece5d3', rule: '#d8cfb8', ink: '#1b1713', spot: '#8a5d14' },
   dark: { paper: '#16131c', rule: '#2c2637', ink: '#f4efe4', spot: '#e0ad55' },
 } as const;
 
 function RoomPreview({ theme }: { theme: Theme }): JSX.Element {
-  // "Follow the system" is genuinely both, so it is drawn as both: the card
-  // sits across the seam rather than next to it.
+  // "Follow the system" is genuinely both, so it is drawn as both
   const halves: Array<keyof typeof ROOMS> = theme === 'system' ? ['light', 'dark'] : [theme];
-
   return (
     <span
       aria-hidden="true"
@@ -45,7 +35,7 @@ function RoomPreview({ theme }: { theme: Theme }): JSX.Element {
         <span key={half} className="flex-1" style={{ background: ROOMS[half].paper }} />
       ))}
 
-      {/* The card, always paper, exactly as it is in the game. */}
+      {/* The card, always paper, exactly as it is in the game */}
       <span className="absolute inset-0 flex items-center justify-center">
         <span
           className="flex h-12 w-16 flex-col justify-center gap-1 rounded-sm px-2"
@@ -62,59 +52,45 @@ function RoomPreview({ theme }: { theme: Theme }): JSX.Element {
 
 const THEMES: Theme[] = ['light', 'system', 'dark'];
 
-/**
- * The first thing a new account sees, once.
- *
- * It exists because the alternative is dropping someone into a live lobby with
- * a name they may not have chosen carefully, an interface in whatever language
- * their browser guessed, and a theme that might be wrong for the room they are
- * sitting in. Three questions, all of them reversible, none of them blocking:
- * every control here also lives in the header or on the profile page.
- *
- * `RequireAuth` sends any account with no `onboarded` stamp here, so this is
- * reached by arriving anywhere in the app, not by a redirect from one screen.
- */
 export function Setup(): JSX.Element {
   const { t } = useTranslation();
   const { user, patchUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [avatar, setAvatar] = useState<AvatarPreset | null>(() => presetFromStored(user?.avatarUrl));
   const [locale, setChosenLocale] = useState<Locale>(currentLocale());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
   const chooseLocale = (next: Locale) => {
     setChosenLocale(next);
-    // Applied as it is picked. Choosing a language you cannot read and then
-    // having to find the save button in it is a bad ten seconds.
     setLocale(next);
   };
-
   const finish = async (withAnswers: boolean) => {
     setProblem(null);
-
     const body: {
       onboarded: true;
       displayName?: string;
       locale?: Locale;
       avatarPreset?: AvatarPreset | null;
     } = { onboarded: true };
-    if (withAnswers) {
+    if (withAnswers) 
+    {
       const parsed = displayNameSchema.safeParse(displayName);
-      if (!parsed.success) {
+      if (!parsed.success) 
+      {
         setErrors({ displayName: parsed.error.issues[0]?.message ?? 'validation.displayName.length' });
         return;
       }
       setErrors({});
-      if (parsed.data !== user?.displayName) body.displayName = parsed.data;
-      if (locale !== user?.locale) body.locale = locale;
-      if (avatar !== presetFromStored(user?.avatarUrl)) body.avatarPreset = avatar;
+      if (parsed.data !== user?.displayName) 
+        body.displayName = parsed.data;
+      if (locale !== user?.locale) 
+        body.locale = locale;
+      if (avatar !== presetFromStored(user?.avatarUrl)) 
+        body.avatarPreset = avatar;
     }
-
     setBusy(true);
     try {
       await api.patch('/api/users/me', body);
@@ -128,19 +104,18 @@ export function Setup(): JSX.Element {
       });
       navigate('/play', { replace: true });
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof ApiError) 
+      {
         setErrors(error.fields);
         setProblem(error.code);
       } else setProblem('error.internal');
       setBusy(false);
     }
   };
-
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void finish(true);
   };
-
   return (
     <div className="mx-auto max-w-2xl animate-fade-up">
       <header className="mb-6">

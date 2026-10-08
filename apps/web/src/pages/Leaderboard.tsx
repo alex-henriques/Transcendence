@@ -26,24 +26,25 @@ export function Leaderboard(): JSX.Element {
     void api
       .get<{ leaderboard: Row[] }>('/api/stats/leaderboard')
       .then((payload) => {
-        if (!cancelled) setRows(payload.leaderboard);
+        if (!cancelled) 
+          setRows(payload.leaderboard);
       })
       .catch(() => {
-        if (!cancelled) setRows([]);
+        if (!cancelled) 
+          setRows([]);
       });
     return () => {
       cancelled = true;
     };
   }, []);
-
-  if (rows === null) {
+  if (rows === null) 
+  {
     return (
       <div className="flex justify-center py-16">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
-
   return (
     <div className="animate-fade-up">
       <PageTitle title={t('leaderboard.title')} subtitle={t('leaderboard.subtitle')} />
