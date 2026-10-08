@@ -32,12 +32,9 @@
 }
 
 @layer base {
-  /* -----------------------------------------------------------------------
-   * LIGHT — the almanac. Warm paper room, ochre spot, dark ink.
-   * -------------------------------------------------------------------- */
+  /*LIGHT - the almanac. Warm paper room, ochre spot, dark ink.*/
   :root {
     color-scheme: light;
-
     --paper: 236 229 211;
     --surface: 255 253 247;
     --surface-2: 233 224 203;
@@ -49,37 +46,26 @@
     --spot: 138 93 20;
     --spot-strong: 109 73 16;
     --spot-wash: 240 229 207;
-    /* The outcome pair. Green is "you were right", red is "you were wrong",
-       and in this palette they mean nothing else, anywhere. */
+    /* The outcome pair. Green is "you were right", red is "you were wrong" and in this palette they mean nothing else */
     --correct: 44 102 71;
     --correct-wash: 226 236 229;
     --wrong: 154 49 35;
     --wrong-wash: 244 227 224;
-
-    /* The answer pair. Deliberately not green and red. A myth is not a
-       mistake, and painting the two buttons good and bad tells the player
-       which one to press before they have thought about it. Ink blue for the
-       claim that holds, plum for the tale that does not. */
     --truth: 26 78 118;
     --truth-wash: 220 231 240;
     --myth: 108 52 130;
     --myth-wash: 236 227 241;
     --shadow: 60 48 30;
-
     /* The deck behind the card sits between the room and the card itself. */
     --deck-near: 214 203 176;
     --deck-far: 195 183 153;
-
-    /* Selection follows the spot colour rather than the browser default. */
+    /* Selection follows the spot colour other than the browser default. */
     --select: 230 214 180;
   }
 
-  /* -----------------------------------------------------------------------
-   * DARK — a lit table in a dark room.
-   * -------------------------------------------------------------------- */
+  /* DARK - a lit table in a dark room.*/
   :root[data-theme='dark'] {
     color-scheme: dark;
-
     --paper: 22 19 28;
     --surface: 28 24 38;
     --surface-2: 38 32 50;
@@ -95,23 +81,18 @@
     --correct-wash: 27 42 36;
     --wrong: 240 145 127;
     --wrong-wash: 43 30 28;
-
     --truth: 138 192 235;
     --truth-wash: 24 34 46;
     --myth: 206 164 233;
     --myth-wash: 38 29 48;
     --shadow: 0 0 0;
-
     --deck-near: 95 90 81;
     --deck-far: 60 57 51;
-
     --select: 74 62 36;
   }
-
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
       color-scheme: dark;
-
       --paper: 22 19 28;
       --surface: 28 24 38;
       --surface-2: 38 32 50;
@@ -127,23 +108,18 @@
       --correct-wash: 27 42 36;
       --wrong: 240 145 127;
       --wrong-wash: 43 30 28;
-
       --truth: 138 192 235;
       --truth-wash: 24 34 46;
       --myth: 206 164 233;
       --myth-wash: 38 29 48;
       --shadow: 0 0 0;
-
       --deck-near: 95 90 81;
       --deck-far: 60 57 51;
-
       --select: 74 62 36;
     }
   }
 
-  /* -----------------------------------------------------------------------
-   * The card. Identical under both themes, because it is paper.
-   * -------------------------------------------------------------------- */
+  /* The card. Identical under both themes, because it is paper */
   :root {
     --card: 250 245 233;
     --card-rule: 245 239 224;
@@ -151,65 +127,45 @@
     --card-ink: 27 23 19;
     --card-soft: 93 85 72;
     --card-dim: 143 134 116;
-
     /* Overwritten per card by the suit in use. Sports is the default. */
     --cat: 47 111 82;
     --cat-wash: 219 231 222;
   }
-
   html,
   body,
   #root {
     height: 100%;
   }
-
   body {
     @apply bg-paper text-ink antialiased;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
   }
-
   .tabular,
   table {
     font-variant-numeric: tabular-nums;
   }
-
   :focus-visible {
     @apply outline-none;
     box-shadow: 0 0 0 2px rgb(var(--paper)), 0 0 0 4px rgb(var(--spot));
   }
-
   ::selection {
     background: rgb(var(--select));
   }
-
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.001ms !important;
-      /* Zeroing the duration leaves the delay, so a staggered group still
-         arrives as a timed sequence of pops, which is the thing being asked
-         for less of. */
       animation-delay: -1ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-
-    /* The one exemption. A spinner is the only sign that anything is
-       happening, and a stopped one reads as a broken arc rather than as
-       calm. Reduced motion means less movement, not a frozen interface. */
     .animate-spin {
       animation-duration: 1s !important;
       animation-delay: 0s !important;
       animation-iteration-count: infinite !important;
     }
-
-    /* Less movement, not no feedback. Travel is exactly what was asked to
-       stop, so the deal loses all of it and keeps the fade: a new card still
-       announces itself as a new card, in a fifth of a second, without
-       sliding anywhere. Declared in this layer rather than with the deal
-       itself because the base layer is never tree-shaken. */
     @keyframes deal-quiet {
       from {
         opacity: 0;
@@ -218,11 +174,9 @@
         opacity: 1;
       }
     }
-
     .deal-in {
       animation: deal-quiet 140ms ease-out backwards !important;
     }
-
     .deck-settle {
       animation: none !important;
     }
@@ -230,114 +184,87 @@
 }
 
 @layer components {
-  /* A panel is a sheet in the room: opaque, hairline-ruled, barely raised. */
+  /* A panel is a sheet in the room, opaque */
   .panel {
     @apply rounded-lg border border-rule bg-surface;
   }
-
   .panel-pad {
     @apply panel p-5 sm:p-6;
   }
-
   .section-title {
     @apply mb-3 text-base font-semibold text-ink;
   }
-
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink-soft;
   }
-
   .input {
     @apply w-full rounded border border-rule-strong bg-surface px-3 py-2 text-ink
            transition-colors focus:border-spot focus:outline-none;
   }
-
   .input::placeholder {
     color: rgb(var(--muted) / 0.7);
   }
-
   .input:focus {
     box-shadow: inset 0 0 0 1px rgb(var(--spot));
   }
-
   .input-error {
     @apply border-wrong;
   }
-
   .hint {
     @apply mt-1.5 text-xs text-muted;
   }
-
   .error-text {
     @apply mt-1.5 text-xs text-wrong;
   }
-
   .chip {
     @apply inline-flex items-center gap-1.5 rounded border border-rule bg-surface-2
            px-2 py-0.5 text-xs font-medium text-ink-soft;
   }
-
   .chip-accent {
     @apply border-spot/35 bg-spot-wash text-spot-strong;
   }
-
   .chip-correct {
     @apply border-correct/35 bg-correct-wash text-correct;
   }
-
   .chip-wrong {
     @apply border-wrong/35 bg-wrong-wash text-wrong;
   }
-
   .table-head {
     @apply border-b border-rule px-3 py-2 text-left text-xs font-semibold text-muted;
   }
-
   .table-cell {
     @apply px-3 py-2.5 text-sm;
   }
-
   .data {
     @apply font-mono tabular-nums;
   }
-
   .rule-heading {
     @apply flex items-center gap-3 text-xs font-medium text-muted;
   }
-
   .rule-heading::after {
     content: '';
     @apply h-px flex-1 bg-rule;
   }
-
-  /* -----------------------------------------------------------------------
-   * Range inputs. Styled rather than left to the browser, because the room
-   * settings are mostly sliders and the default control ignores the theme.
-   * -------------------------------------------------------------------- */
   .slider {
-    /* 24px minimum, because a slider is a target like any other and WCAG 2.2
-       SC 2.5.8 does not exempt it. The thumb is 20px in a 22px box otherwise,
-       which fails by two pixels on a control that is dragged. */
+    /* 24px minimum, because a slider is a target like any other and WCAG 2.2 SC 2.5.8 does not exempt it. The thumb is 20px in a 22px box otherwise,
+    which fails by two pixels on a control that is dragged. */
     @apply w-full cursor-pointer bg-transparent py-2;
     min-height: 24px;
     -webkit-appearance: none;
     appearance: none;
   }
-
   .slider::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 4px;
     background: rgb(var(--surface-2));
     border: 1px solid rgb(var(--rule));
   }
-
   .slider::-moz-range-track {
     height: 6px;
     border-radius: 4px;
     background: rgb(var(--surface-2));
     border: 1px solid rgb(var(--rule));
   }
-
   .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -349,7 +276,6 @@
     border: 1px solid rgb(var(--spot-strong));
     transition: filter 120ms ease-out, transform 120ms ease-out;
   }
-
   .slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
@@ -358,19 +284,14 @@
     background: rgb(var(--spot));
     transition: filter 120ms ease-out, transform 120ms ease-out;
   }
-
   .slider:hover::-webkit-slider-thumb { filter: brightness(1.12); }
   .slider:hover::-moz-range-thumb { filter: brightness(1.12); }
   .slider:active::-webkit-slider-thumb { transform: scale(0.94); }
   .slider:active::-moz-range-thumb { transform: scale(0.94); }
 }
 
-/* ---------------------------------------------------------------------------
- * The deck. Card stock, suits and motion, paired with theme/cardStyle.ts.
- * Deleting this block and that file removes the decoration completely; the
- * `prefers-reduced-motion` rule in the base layer already disables the motion
- * for anyone who has asked for less of it.
- * ------------------------------------------------------------------------ */
+/* The deck. Card stock, suits and motion, paired with theme/cardStyle.ts. Deleting this block and that file removes the decoration completely; 
+the 'prefers reduced motion' rule in the base layer already disables the motion for anyone who has asked for less of it.*/
 @layer components {
   /* The face of the card in play. Always paper, in both themes. */
   .card-face {
@@ -380,7 +301,6 @@
     color: rgb(var(--card-ink));
     box-shadow: 0 18px 34px -18px rgb(var(--shadow) / 0.55);
   }
-
   /* Faint ruled paper. Two solid creams, not an alpha stripe. */
   .card-face::before {
     content: '';
@@ -391,29 +311,18 @@
       rgb(var(--card-rule)) 25px 26px
     );
   }
-
   /* The suit's colour along the top edge, like a printed deck's back. */
   .card-band {
     @apply pointer-events-none absolute inset-x-0 top-0 h-1;
     background: rgb(var(--cat));
   }
-
   /* The inner keyline a playing card carries inside its trim. */
   .card-keyline {
     @apply pointer-events-none absolute rounded border;
     inset: 11px;
     border-color: rgb(var(--cat) / 0.34);
   }
-
-  /* The rest of the deck, squared off behind the card in play.
-   *
-   * Inset by the wrapper's own padding rather than `inset-0`. An absolutely
-   * positioned child fills the *padding* box, so under `inset-0` a sheet was
-   * already as wide as the whole wrapper before being translated, and the
-   * `pb-5 pr-6` that was supposed to reserve room for it reserved nothing —
-   * the sheets hung 21px past the layout and pushed a horizontal scrollbar
-   * onto any screen where the card ran the full width. Inset, a sheet is
-   * exactly the size of the card it sits behind, which is also what it is. */
+  /* The rest of the deck, squared off behind the card in play. */
   .deck-sheet {
     @apply pointer-events-none absolute rounded-lg border;
     top: 0;
@@ -422,26 +331,16 @@
     bottom: 1.25rem;
     border-color: rgb(var(--card-edge));
   }
-
-  /* ---------------------------------------------------------------------
-   * The deal. The card is pulled off the top of the stack: it starts sitting
-   * on the deck, lifts and slides clear, then settles square. Opacity lands
-   * early on purpose — this is a timed question, and spending the first
-   * quarter second fading the text up spends a real slice of the answer
-   * window making it unreadable.
-   * ------------------------------------------------------------------ */
   @keyframes deal-in {
     /* Face down in the stack, squared with the sheets behind it. */
     0% {
       opacity: 0;
       transform: translate(30px, 26px) rotate(-6deg) scale(0.955);
     }
-    /* Readable a fifth of the way in, long before it has stopped moving. */
+    /* Readable a fifth of the way in. */
     18% {
       opacity: 1;
     }
-    /* The lift. It overshoots up and to the left, the way a card does when
-       it is pulled clear of the pile rather than slid along the table. */
     62% {
       opacity: 1;
       transform: translate(-6px, -10px) rotate(1.6deg) scale(1.022);
@@ -451,30 +350,17 @@
       transform: translate(0, 0) rotate(0deg) scale(1);
     }
   }
-
-  /* `backwards`, not `both`. A filled-forwards animation keeps applying its
-     last frame, and an animation's opacity outranks a class's, so `both` left
-     the card stuck at opacity 1 and silently defeated the dimming during the
-     reveal. Nothing needs holding after the last frame: it is the resting
-     state already. */
   .deal-in {
     animation: deal-in 500ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
-
   /* The sheets settle back down as the top card leaves them. */
   @keyframes deck-settle {
     0% { transform: translate(calc(var(--dx) - 4px), calc(var(--dy) - 6px)); }
     100% { transform: translate(var(--dx), var(--dy)); }
   }
-
   .deck-settle {
     animation: deck-settle 500ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
-
-  /* The 404 drifts. Decorative, seen rarely, and never against a clock, which
-   * is the only combination that earns an animation that never stops. The
-   * blanket reduced-motion rule stops it, and should: unlike the deal, nothing
-   * here is telling the player that something changed. */
   @keyframes drift {
     0%,
     100% {
@@ -484,43 +370,30 @@
       transform: translateY(5px);
     }
   }
-
   .drift {
     animation: drift 3.4s ease-in-out infinite;
   }
-
   /* Offset, so the three do not bob in lockstep like one object. */
   .drift-slow {
     animation-duration: 4.6s;
     animation-direction: reverse;
   }
-
   /* The verdict lands like a rubber stamp rather than fading in. */
   @keyframes stamp {
     0% { opacity: 0; transform: scale(1.11) rotate(-1.4deg); }
     55% { opacity: 1; transform: scale(0.985) rotate(0.2deg); }
     100% { opacity: 1; transform: scale(1) rotate(0deg); }
   }
-
-  /* Decelerating, not elastic: the overshoot is in the keyframes above,
-     where it is the stamp hitting the paper. An easing curve that overshoots
-     as well would add a second bounce the object does not have. */
   .stamp {
     animation: stamp 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-
-  /* A points change slides up into place instead of blinking on. */
   @keyframes tick-up {
     0% { opacity: 0; transform: translateY(5px); }
     100% { opacity: 1; transform: translateY(0); }
   }
-
   .tick-up {
     animation: tick-up 220ms ease-out both;
   }
-
-  /* Under three seconds the bar breathes. Slow and low contrast on purpose:
-     it should register at the edge of vision, not demand attention. */
   @keyframes urgency {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.55; }
@@ -529,10 +402,6 @@
   .urgency {
     animation: urgency 900ms ease-in-out infinite;
   }
-
-  /* The retry indicator. Its own class rather than borrowing `.urgency`: that
-   * one means the clock is running out, and a dropped socket is not urgent,
-   * it is just waiting. Slower, so it reads as patience and not as alarm. */
   @keyframes retrying {
     0%,
     100% {
@@ -542,16 +411,9 @@
       opacity: 0.9;
     }
   }
-
   .retrying {
     animation: retrying 1.9s ease-in-out infinite;
   }
-
-  /* -----------------------------------------------------------------------
-   * Pressable. Anything you can click says so by getting brighter under the
-   * cursor and going down under the finger. The brightness step is what tells
-   * you a thing is a control before you have clicked it.
-   * -------------------------------------------------------------------- */
   .press {
     transition: filter 120ms ease-out, transform 120ms ease-out,
       background-color 120ms ease-out, border-color 120ms ease-out;
@@ -562,9 +424,6 @@
       filter: brightness(1.09);
     }
   }
-
-  /* The key goes down instantly; letting go keeps the easing, which is the
-     half that can afford it. */
   .press:active:not(:disabled) {
     transform: translateY(1px);
     filter: brightness(0.96);

@@ -9,15 +9,15 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { ThemeProvider } from './theme/ThemeContext.js';
 
 const container = document.getElementById('root');
-if (!container) throw new Error('#root is missing from index.html');
+if (!container) 
+  throw new Error('#root is missing from index.html');
 
 createRoot(container).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        {/* Inside ThemeProvider so the fallback is painted in the room the
-            visitor chose, and outside AuthProvider so a failure in the session
-            plumbing is caught rather than taking the boundary down with it. */}
+        {/* Inside ThemeProvider so the fallback is painted in the room the visitor chose, and outside AuthProvider so a failure in the session
+        plumbing is caught instead of taking the boundary down with it. */}
         <ErrorBoundary>
           <AuthProvider>
             <App />

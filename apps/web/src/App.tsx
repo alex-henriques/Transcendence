@@ -29,57 +29,46 @@ function FullPageSpinner(): JSX.Element {
   );
 }
 
-/**
- * Sends anonymous visitors to the login screen, remembering where they were,
- * and sends a brand new account through the setup screen first.
- *
- * The setup gate lives here rather than on the login route because an account
- * arrives signed in by several paths — the login form, an OAuth callback, a
- * silent refresh on a returning tab — and only one of them goes through a
- * screen that could have redirected. Guarding the destination catches all of
- * them, and it is the same check the server would make.
- */
+/* Sends anonymous visitors to the login screen, remembering where they were, and sends a brand new account through the setup screen first.
+The setup is here rather than on the login route because an account arrives signed in by several paths, the login form, an OAuth callback, a
+ * silent refresh on a returning tab, and only one of them goes through a screen that could have redirected.*/
 function RequireAuth({ children }: { children: JSX.Element }): JSX.Element {
   const { user, loading } = useAuth();
   const location = useLocation();
-
-  if (loading) return <FullPageSpinner />;
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (!user.onboarded) return <Navigate to="/setup" replace />;
+  if (loading) 
+    return <FullPageSpinner />;
+  if (!user) 
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!user.onboarded) 
+    return <Navigate to="/setup" replace />;
   return children;
 }
 
-/** Authenticated, but exempt from the setup gate — it *is* the setup. */
 function RequireSession({ children }: { children: JSX.Element }): JSX.Element {
   const { user, loading } = useAuth();
   const location = useLocation();
-
-  if (loading) return <FullPageSpinner />;
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (loading) 
+    return <FullPageSpinner />;
+  if (!user) 
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return children;
 }
 
 export function App(): JSX.Element {
   const { loading } = useAuth();
-
-  // Holding the first paint until the silent refresh settles avoids a flash of
-  // the login screen for someone who is, in fact, already signed in.
-  if (loading) return <FullPageSpinner />;
-
+  if (loading) 
+    return <FullPageSpinner />;
   return (
     <Routes>
       <Route element={<Layout />}>
         {/* Public */}
-        {/* The front door. Arriving at the site should say what the site
-            is, even to someone who has an account: the play screen is one
-            click away in the nav and on this page's own button. */}
+        {}
         <Route path="/" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-
         {/* Authenticated */}
         <Route
           path="/setup"

@@ -1,31 +1,21 @@
-/**
- * Design tokens for "Who knows best?".
- *
- * The idea is a deck of cards on a table. The card is always warm paper; the
- * room around it is what changes between themes. Dark is a lit table in a dark
- * room, light is the almanac the project started as. Because the card keeps
- * its own colours in both, a category's suit and colour never have to be
- * re-checked for contrast twice.
- *
- * Every token is RGB channels rather than a hex string so Tailwind's opacity
- * modifiers (`border-correct/40`) still work through the CSS variable.
- *
- * Rules this palette keeps:
- *   - solid colour, no alpha layers stacked to fake a shade
- *   - no gradients on surfaces, no coloured glows, no backdrop blur
- *   - truth and myth are muted, never neon
- *   - green and red are reserved for the outcome; the two answers are
- *     blue and plum, so no button is coloured by whether it is correct
- */
+/* Design tokens for "Who knows best?".
+The idea is a deck of cards on a table. The card is always warm paper; the room around it is what changes between themes. 
+Dark is a lit table in a dark room, light is the almanac the project started as. 
+Because the card keeps its own colours in both, a category's suit and colour never have to be rechecked for contrast twice.
+Every token is RGB channels instead of a hex string so Tailwind's opacity modifiers ('border-correct/40') still work through the CSS variable.
+Rules this palette keeps:
+- solid colour, no alpha layers stacked to fake a shade
+- no gradients on surfaces, no coloured glows, no backdrop blur
+- truth and myth are muted, never neon
+ - green and red are reserved for the outcome; the two answers are blue and plum, so no button is coloured by whether it is correct */
 const token = (name) => `rgb(var(${name}) / <alpha-value>)`;
 
-/** @type {import('tailwindcss').Config} */
+/*@type {import('tailwindcss').Config}*/
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // The room. Re-themed.
         paper: token('--paper'),
         surface: token('--surface'),
         'surface-2': token('--surface-2'),
@@ -37,22 +27,14 @@ export default {
         spot: token('--spot'),
         'spot-strong': token('--spot-strong'),
         'spot-wash': token('--spot-wash'),
-        // The outcome pair. Green is right, red is wrong, and that is the
-        // only thing either of them ever means.
         correct: token('--correct'),
         'correct-wash': token('--correct-wash'),
         wrong: token('--wrong'),
         'wrong-wash': token('--wrong-wash'),
-
-        // The answer pair, kept well clear of green and red so that pressing
-        // a button never looks like a verdict on the press.
         truth: token('--truth'),
         'truth-wash': token('--truth-wash'),
         myth: token('--myth'),
         'myth-wash': token('--myth-wash'),
-
-        // The card. Deliberately the same in both themes: it is a piece of
-        // paper, and paper does not change colour when the lights go out.
         card: token('--card'),
         'card-rule': token('--card-rule'),
         'card-edge': token('--card-edge'),
@@ -61,21 +43,15 @@ export default {
         'card-dim': token('--card-dim'),
         'deck-near': token('--deck-near'),
         'deck-far': token('--deck-far'),
-
-        // The eight suits, as they appear on the card.
         cat: token('--cat'),
         'cat-wash': token('--cat-wash'),
       },
       fontFamily: {
-        // Archivo, self-hosted. A grotesque, so the statements read as a game
-        // rather than as a book.
         sans: ['Archivo', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
-        // Kept for the legal pages, where long-form reading wants a serif.
         serif: ['Iowan Old Style', 'Palatino Linotype', 'Palatino', 'Charter', 'Georgia', 'serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
-        // Between the near-square of a printed rule and the pill of an app.
         DEFAULT: '6px',
         sm: '4px',
         md: '8px',
