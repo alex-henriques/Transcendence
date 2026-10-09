@@ -1,40 +1,26 @@
-/**
- * The AI steps of the pipeline (spec §7 steps 6–8).
- *
- * Three separate calls, for three separate reasons:
- *   1. generate:  write the affirmative and the counter-wording of a fact
- *   2. verify:    read a card *without its label* and say whether it is true
- *   3. translate: reword it in another language, then verify that too
- *
- * The verification pass is blind on purpose. Negation is where truth-value
- * inversion happens most often, and translation is where it happens second
- * most often; a card whose stored answer is wrong is the worst possible
- * outcome at evaluation time, so anything the blind pass disagrees with goes
- * to a manual review queue instead of into the card set.
- */
-
+/* The AI steps of the pipeline: 
+generate the wordings, verify each card blind (without its label), and translate then verify again.
+The check is blind because negation and translation are where true/false flips happen, and any disagreement goes to manual review, never the card set.*/
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-5';
 const BATCH_SIZE = 20;
 
 export interface GeneratedCard {
   id: string;
-  /** Affirmative wording; the true one. */
   affirmative: string;
-  /** Counter-wording; the false one. */
   negated: string;
 }
 
 export interface VerificationResult {
   id: string;
-  /** What the model believes, having never seen the stored label. */
   believesTrue: boolean;
   confidence: 'high' | 'medium' | 'low';
 }
 
 function apiKey(): string {
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
+  if (!key) 
+  {
     throw new Error(
       'ANTHROPIC_API_KEY is not set. The AI steps need it; the committed card set does not.',
     );
@@ -58,20 +44,19 @@ async function complete(system: string, user: string, maxTokens = 4096): Promise
       messages: [{ role: 'user', content: user }],
     }),
   });
-
-  if (!response.ok) {
+  if (!response.ok) 
+  {
     throw new Error(`Anthropic API ${response.status}: ${await response.text()}`);
   }
-
   const payload = (await response.json()) as { content: { type: string; text?: string }[] };
   return payload.content.map((block) => block.text ?? '').join('');
 }
 
-/** Models like to wrap JSON in prose or fences; take the outermost array. */
 function extractJson<T>(text: string): T {
   const start = text.indexOf('[');
   const end = text.lastIndexOf(']');
-  if (start === -1 || end === -1) throw new Error(`No JSON array in model output: ${text.slice(0, 200)}`);
+  if (start === -1 || end === -1) 
+    throw new Error(`No JSON array in model output: ${text.slice(0, 200)}`);
   return JSON.parse(text.slice(start, end + 1)) as T;
 }
 
@@ -94,8 +79,8 @@ export async function generateCards(
   items: { id: string; knowledge: string; distractor: string | null }[],
 ): Promise<GeneratedCard[]> {
   const out: GeneratedCard[] = [];
-
-  for (let index = 0; index < items.length; index += BATCH_SIZE) {
+  for (let index = 0; index < items.length; index += BATCH_SIZE) 
+  {
     const batch = items.slice(index, index + BATCH_SIZE);
     const prompt = batch
       .map(
@@ -104,12 +89,10 @@ export async function generateCards(
           (item.distractor ? `\nplausible wrong value: ${item.distractor}` : ''),
       )
       .join('\n\n');
-
     const raw = await complete(GENERATE_SYSTEM, prompt);
     const parsed = extractJson<GeneratedCard[]>(raw);
     out.push(...parsed.filter((card) => card.affirmative && card.negated));
   }
-
   return out;
 }
 
@@ -119,22 +102,17 @@ For each statement, decide whether it is true or false on its own terms, using o
 
 Reply with a JSON array only: [{"id": "...", "believesTrue": true|false, "confidence": "high"|"medium"|"low"}]`;
 
-/**
- * The blind pass. Callers must not include the stored label in `statement`,
- * which is the entire point of the step.
- */
 export async function verifyCards(
   items: { id: string; statement: string }[],
 ): Promise<VerificationResult[]> {
   const out: VerificationResult[] = [];
-
-  for (let index = 0; index < items.length; index += BATCH_SIZE) {
+  for (let index = 0; index < items.length; index += BATCH_SIZE) 
+  {
     const batch = items.slice(index, index + BATCH_SIZE);
     const prompt = batch.map((item) => `id: ${item.id}\nstatement: ${item.statement}`).join('\n\n');
     const raw = await complete(VERIFY_SYSTEM, prompt);
     out.push(...extractJson<VerificationResult[]>(raw));
   }
-
   return out;
 }
 
@@ -159,13 +137,12 @@ export async function translateCards(
   locale: string,
 ): Promise<{ id: string; text: string }[]> {
   const out: { id: string; text: string }[] = [];
-
-  for (let index = 0; index < items.length; index += BATCH_SIZE) {
+  for (let index = 0; index < items.length; index += BATCH_SIZE) 
+  {
     const batch = items.slice(index, index + BATCH_SIZE);
     const prompt = batch.map((item) => `id: ${item.id}\ntext: ${item.text}`).join('\n\n');
     const raw = await complete(TRANSLATE_SYSTEM(locale), prompt);
     out.push(...extractJson<{ id: string; text: string }[]>(raw));
   }
-
   return out;
 }

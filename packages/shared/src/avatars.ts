@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-/* The stock avatars, two for each card suit; one that isn't a person, and one that is, dressed for the suit. A chosen preset is saved in
- 'users.avatar_url' as 'preset:<id>' in order to every screen reads one field whether the avatar is an upload or a stock one. */
+//Stock avatars, two per suit. A preset is stored in 'users.avatar_url' as 'preset:<id>'
 export const AVATAR_PRESETS = [
   'sports-trophy',
   'sports-player',
@@ -31,7 +30,7 @@ export function presetToStored(preset: AvatarPreset): string {
   return `${AVATAR_PREFIX}${preset}`;
 }
 
-/*  Returns the preset for a stored avatar value, or null for uploads, null, and unknown ids. A non null result is always safe to draw. */
+//  Returns the preset for a stored avatar value, or null for uploads, null, and unknown ids. A non null result is always safe to draw
 export function presetFromStored(stored: string | null | undefined): AvatarPreset | null {
   if (!stored || !stored.startsWith(AVATAR_PREFIX)) 
     return null;

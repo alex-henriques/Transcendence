@@ -1,18 +1,7 @@
 import type { Difficulty, Locale } from './constants.js';
 
-/**
- * The WebSocket contract.
- *
- * There are two independent channels (spec §10):
- *   /ws/lobby: the public room list and its live changes
- *   /ws/room:  one match; join, vote, reveal, scoreboard
- * Keeping them apart means a message never has to be routed by inspecting a
- * room id that may or may not apply to the socket.
- *
- * Both channels authenticate with a single-use ticket obtained from
- * `POST /api/ws/ticket`; see `apps/api/src/ws/ticket.ts` for why a ticket
- * rather than the access token in the query string.
- */
+/* '/ws/lobby' for the public room list, '/ws/room' for one match. They're separate so messages never need routing by room id. 
+Both authenticate with a single use ticket from 'POST /api/ws/ticket' */
 
 export type RoomStatus = 'lobby' | 'playing' | 'finished';
 export type MatchPhase = 'countdown' | 'serving' | 'collecting' | 'revealing' | 'scoreboard';
@@ -36,7 +25,7 @@ export interface ScoreboardEntry {
   comboMax: number;
   connected: boolean;
   rank: number;
-  /** Points gained or lost on the card that was just revealed. */
+  // Points gained or lost on the card that was just revealed
   lastDelta: number | null;
 }
 
@@ -48,8 +37,6 @@ export interface RoomSummary {
   visibility: 'public' | 'private';
   difficulty: Difficulty;
   status: RoomStatus;
-  /// Slug and source name together: the client translates by slug and falls
-  /// back to the stored name for a category it has no translation for.
   categories: { slug: string; name: string }[];
   playerCount: number;
   maxPlayers: number;
@@ -72,12 +59,10 @@ export interface ServedCard {
   categorySlug: string;
   categoryName: string;
   difficulty: Difficulty;
-  /** Server clock, epoch ms. The client only uses these to animate. */
   servedAt: number;
   deadlineAt: number;
   windowMs: number;
   isDouble: boolean;
-  /** Present when the viewer's locale has no translation for this card. */
   fallbackLocale?: Locale;
 }
 
@@ -87,7 +72,7 @@ export interface RevealedPlayerResult {
   correct: boolean | null;
   points: number;
   reactionMs: number | null;
-  /** False when the reported reaction time failed RTT validation. */
+  //False when the reported reaction time failed RTT validation.
   reactionTrusted: boolean;
 }
 
@@ -97,23 +82,19 @@ export interface MatchStateSnapshot {
   position: number;
   total: number;
   card: ServedCard | null;
-  /** Milliseconds left in the current phase, computed by the server at send time. */
   remainingMs: number;
-  /** The viewer's own vote on the card in play, if already cast. */
   myVote: Vote | null;
   scoreboard: ScoreboardEntry[];
 }
 
-// ---------------------------------------------------------------------------
 // Client -> server
-// ---------------------------------------------------------------------------
 
 export type ClientLobbyEvent = { type: 'pong'; t: number };
 
 export type ClientRoomEvent =
   | { type: 'room:join'; code: string }
   | { type: 'room:leave' }
-  /** Switching language mid-match: the next card arrives in the new one. */
+  // Switching language mid match means the next card comes in the new one
   | { type: 'locale:set'; locale: Locale }
   | { type: 'room:settings'; settings: RoomSettingsPayload }
   | { type: 'room:add_bot'; profileId: number }
@@ -124,9 +105,7 @@ export type ClientRoomEvent =
 
 export type ClientEvent = ClientLobbyEvent | ClientRoomEvent;
 
-// ---------------------------------------------------------------------------
 // Server -> client
-// ---------------------------------------------------------------------------
 
 export type ServerLobbyEvent =
   | { type: 'lobby:rooms'; rooms: RoomSummary[] }
@@ -153,14 +132,6 @@ export type ServerRoomEvent =
       matchCardId: number;
       isTrue: boolean;
       sourceRef: string | null;
-      /**
-       * The fact stated correctly, in the viewer's language.
-       *
-       * A card that was false leaves the player holding a wrong idea, so the
-       * reveal has to say what is actually the case. It is always the
-       * affirmative wording of the same fact, which for a card that was true is
-       * the card itself.
-       */
       correction: string;
       results: RevealedPlayerResult[];
       scoreboard: ScoreboardEntry[];
@@ -181,7 +152,6 @@ export type ServerRoomEvent =
 
 export type ServerEvent = ServerLobbyEvent | ServerRoomEvent;
 
-/** XP and achievements granted at the end of a match (module 10). */
 export interface MatchAward {
   userId: number;
   xpGained: number;
@@ -190,11 +160,6 @@ export interface MatchAward {
   achievements: { slug: string; name: string; description: string }[];
 }
 
-/** Narrowing helper used by both channel clients. */
 export function isServerEvent(value: unknown): value is ServerEvent {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { type?: unknown }).type === 'string'
-  );
+  return (typeof value === 'object' && value !== null && typeof (value as { type?: unknown }).type === 'string');
 }

@@ -1,26 +1,21 @@
 import { createHash } from 'node:crypto';
 
-/**
- * Client for the Open Trivia Database.
- *
- * Two things matter here and nowhere else in the project: the rate limit (one
- * request per five seconds) and the session token, which is what stops the API
- * returning the same question twice inside a run.
- */
+/* Two things matter here and nowhere else in the project: the rate limit (one request per five seconds) and the session token, which is what stops the API
+returning the same question twice inside a run */
 
 const BASE = 'https://opentdb.com';
-/** OpenTDB rejects anything faster than one request per five seconds. */
 const MIN_INTERVAL_MS = 5_200;
 
 let lastRequestAt = 0;
 
 async function throttled<T>(url: string): Promise<T> {
   const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastRequestAt));
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  if (wait > 0) 
+    await new Promise((resolve) => setTimeout(resolve, wait));
   lastRequestAt = Date.now();
-
   const response = await fetch(url, { headers: { 'User-Agent': 'wkb-cardgen/1.0' } });
-  if (!response.ok) throw new Error(`OpenTDB ${response.status} for ${url}`);
+  if (!response.ok) 
+    throw new Error(`OpenTDB ${response.status} for ${url}`);
   return (await response.json()) as T;
 }
 
@@ -67,7 +62,6 @@ export async function categoryCount(id: number): Promise<number> {
   return payload.category_question_count.total_question_count;
 }
 
-/** A session token makes the API skip questions already returned in this run. */
 export async function newSessionToken(): Promise<string> {
   const payload = await throttled<{ token: string }>(`${BASE}/api_token.php?command=request`);
   return payload.token;
@@ -75,7 +69,6 @@ export async function newSessionToken(): Promise<string> {
 
 export interface FetchResult {
   questions: RawQuestion[];
-  /** 4 means the token is exhausted: every question has been returned. */
   responseCode: number;
 }
 
@@ -90,11 +83,11 @@ export async function fetchQuestions(params: {
     token: params.token,
     encode: 'url3986',
   });
-  if (params.categoryId) query.set('category', String(params.categoryId));
-  if (params.type) query.set('type', params.type);
-
+  if (params.categoryId) 
+    query.set('category', String(params.categoryId));
+  if (params.type) 
+    query.set('type', params.type);
   const payload = await throttled<QuestionResponse>(`${BASE}/api.php?${query.toString()}`);
-
   return {
     responseCode: payload.response_code,
     questions: (payload.results ?? []).map((question) => ({
@@ -107,10 +100,6 @@ export async function fetchQuestions(params: {
   };
 }
 
-/**
- * A stable identifier for a question, so re-collecting can be deduplicated and
- * a fact can always be traced back to the exact wording it came from.
- */
 export function questionId(question: RawQuestion): string {
   return createHash('sha256')
     .update(`${question.question}|${question.correct_answer}`)

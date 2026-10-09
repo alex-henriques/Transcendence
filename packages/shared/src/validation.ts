@@ -2,12 +2,7 @@ import { z } from 'zod';
 import { avatarPresetSchema } from './avatars.js';
 import { DIFFICULTIES, LOCALES, ROOM_LIMITS } from './constants.js';
 
-/**
- * Every schema here is imported by the React forms *and* by the Fastify route
- * handlers. The subject requires validation on both sides; sharing one file is
- * how we guarantee the two sides cannot drift apart.
- */
-
+//  Validation schemas shared by the React forms and the Fastify routes so client and server rules can't drift apart 
 export const emailSchema = z
   .string()
   .trim()
@@ -16,10 +11,6 @@ export const emailSchema = z
   .email('validation.email.invalid')
   .toLowerCase();
 
-/**
- * Deliberately a length floor plus a character-class floor rather than a regex
- * zoo: long passphrases must stay legal.
- */
 export const passwordSchema = z
   .string()
   .min(10, 'validation.password.tooShort')
@@ -54,22 +45,11 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export const updateProfileSchema = z.object({
   displayName: displayNameSchema.optional(),
   locale: localeSchema.optional(),
-  /// One of the stock avatars, or null to go back to generated initials.
-  /// Validated against the shipped list on both sides, so the value that
-  /// reaches storage is always one the renderer knows how to draw.
   avatarPreset: avatarPresetSchema.nullable().optional(),
-  /// Sent once, by the first-run setup screen, to stop it coming back.
-  /// `true` only: nothing may un-onboard an account over the API.
   onboarded: z.literal(true).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-/**
- * Deleting an account (module 15). `confirm` must be the display name typed
- * back, so the request cannot be a stray click, and `password` is required
- * whenever the account has one: erasure is irreversible and re-authenticating
- * is the only thing that proves the person asking is the account holder.
- */
 export const deleteAccountSchema = z.object({
   confirm: z.string().min(1, 'validation.confirm.required'),
   password: z.string().optional(),
@@ -125,9 +105,8 @@ export const createRoomSchema = z
   })
   .strict()
   .superRefine((room, ctx) => {
-    // "Specific category" is a separate room, not a filter: a category room
-    // must name exactly one category, a general room must name none.
-    if (room.mode === 'category' && room.settings.categoryIds.length === 0) {
+     if (room.mode === 'category' && room.settings.categoryIds.length === 0) 
+    {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['settings', 'categoryIds'],
@@ -154,18 +133,20 @@ export const createTournamentSchema = z
       .max(40, 'validation.tournamentName.tooLong'),
     difficulty: difficultySchema.default('medium'),
     cardCount: z.number().int().min(ROOM_LIMITS.MIN_CARDS).max(ROOM_LIMITS.MAX_CARDS).default(10),
-    /** Bracket size; must be a power of two so the bracket is complete. */
+    //Bracket size must be a power of two so the bracket is complete
     size: z.union([z.literal(4), z.literal(8)]).default(4),
   })
   .strict();
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
 
-/** Formats a ZodError into `{ field: messageKey }` for form rendering. */
+// Formats a ZodError into '{ field: messageKey }' for form rendering.
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const issue of error.issues) {
+  for (const issue of error.issues) 
+  {
     const key = issue.path.join('.') || '_';
-    if (!(key in out)) out[key] = issue.message;
+    if (!(key in out)) 
+      out[key] = issue.message;
   }
   return out;
 }
