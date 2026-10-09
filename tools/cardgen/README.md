@@ -1,79 +1,74 @@
-# cardgen, the card-set pipeline
+# cardgen: how the card set gets made
 
-This is a maintenance tool. It is not part of the application.
+'cardgen' turns trivia questions from [OPENTDB](https://opentdb.com) into the true/false cards the game uses.
+This is a maintenance tool, not part of the game. You run it in your own machine, commit what it produces, and the game simply reads those committed files.
+The running game never talks to OpenTDB. 
 
-It runs on a developer machine, its output is committed to the repository, and
-the running game never contacts OpenTDB. That last point matters: "runs with a
-single command" is a rejection criterion, so `make` has to work with no network
-and no API key, on a machine that has never seen this project before.
+That separation is deliberate, the project must run with a single command, on a fresh machine, with no network, and no API key; so the card set has to already 
+ be in the repo by the time anyone types 'make'.
 
-```
+## Quick Start
+
+You don't need Node installed because everything runs inside the pinned Node image.
+```sh
 make cardgen ARGS="check"
 ```
+Swap 'check' for any command in the table below.
 
-Everything runs inside the pinned Node image, so you do not need Node installed.
-
-## The steps
+```
+OpenTDB -> collect(network) -> convert(offline) -> forms(API key) -> verify(API key) -> translate(API key) -> check(offline) -> export
+```
 
 | Command | Step | Needs | What it does |
 |---|---|---|---|
-| `counts` | 1 | network | Asks OpenTDB for exact global and per-category counts. Nothing downstream is planned on an estimate. |
-| `collect` | 2-3 | network | Pulls the whole pool using a session token, so the API never returns the same question twice in one run. Writes the raw JSON to `data/raw/questions.json`, keyed by the SHA-256 of each question. |
-| `convert` | 4-5 | offline | Turns questions into facts and applies the filters. |
-| `forms` | 6 | `ANTHROPIC_API_KEY` | Writes the affirmative and counter-wording of each fact, twenty per call. |
-| `verify` | 7 | `ANTHROPIC_API_KEY` | A blind check. The model reads a wording without its stored label and says whether it is true. |
-| `translate <locale>` | 8 | `ANTHROPIC_API_KEY` | Translates, then blind-verifies the translation the same way. |
-| `sample [n]` | 9 | offline | Draws a random sample for manual review. |
-| `check` | 10 | offline | Balance, coverage and the negation tell. |
-| `export` | 11 | offline | Says where the shipped card set lives. |
+| 'counts' | 1 | 🌐 network | Asks OpenTDB exactly how many questions it has, overall and per category. Nothing is planned on a guess. |
+| 'collect' | 2–3 | 🌐 network | Downloads the whole pool, a session token stops the API from repeating a question within one run. Saves the raw JSON to 'data/raw/questions.json', keyed by each question's SHA-256. |
+| 'convert' | 4–5 | ✅ offline | Turns each question into a single fact and applies the filters. |
+| 'forms' | 6 | 🔑 'ANTHROPIC_API_KEY' | Writes a true wording and a false wording for each fact, twenty facts per call. |
+| 'verify' | 7 | 🔑 'ANTHROPIC_API_KEY' | Blind check; a model reads each wording without its stored answer and says whether it's true. |
+| 'translate <locale>' | 8 | 🔑 'ANTHROPIC_API_KEY' | Translates the cards, then blind checks the translations the same way. |
+| 'sample [n]' | 9 | ✅ offline | Pulls a random sample for a human to read through. |
+| 'check' | 10 | ✅ offline | Checks category balance, coverage, and whether false cards give themselves away. |
+| 'export' | 11 | ✅ offline | Tells you where the shipped card set are |
 
-## Decisions worth explaining
 
-One fact per question. A multiple-choice question with three wrong options is
-one fact, not four. All four options are the same piece of knowledge: somebody
-who knows the capital of Australia will answer every variant without thinking.
-Generating one card per wrong option would inflate the count while making the
-card set feel repetitive, which defeats the purpose of having one.
+## Why it works the way it does
 
-Two wordings per fact, with the false one built by substitution. Each fact
-becomes an affirmative card, which is true, and a counter-wording card, which is
-false. The obvious way to write the false one is to insert "not", and that is a
-trap. If every false card contained a negation word, a player could win by
-scanning for "not" and never reading the statement.
+### One question becomes one fact, instead of four
 
-So the false wording replaces the key value with a plausible wrong one:
-
-> The Nile flows northward.  →  The Nile flows southward.
-
-`cardgen check` measures how well this holds by counting negation words on each
-side. On the shipped set the skew is -1.67 percentage points, so negation words
-are slightly more common in the true cards. There is no tell to find.
-
-Blind verification. The verifying model is never shown the stored label.
-Negation is where truth values get flipped most often, and translation is second.
-A disagreement is never resolved automatically: it goes to
-`work/review-queue.json` and waits for a person. A card whose stored answer is
-wrong is the worst thing that can happen during an evaluation.
-
-The temporal filter. Statements containing "currently", "the most recent",
-"record", "the only", a superlative or a recent year are flagged, because they
-go stale without anything noticing. Superlatives are the noisy rule, since "the
-largest ocean" is stable while "the largest company" is not, so they are flagged
-for review and never discarded automatically.
-
-Eight macro-categories, not OpenTDB's 24. Narrow categories like board games,
-vehicles or anime never reach enough facts to sustain a category room, and a
-room that runs out after two matches is worse than not offering it. `convert.ts`
-maps the 24 onto 8.
-
-## Why the raw dump is committed
-
-`data/raw/questions.json` is the source of everything downstream. Committing it
-means the pipeline can be re-run and re-checked without collecting again, and
-OpenTDB being unreachable never becomes a problem, for the pipeline or for the
-evaluation.
+A multiple choice question has one right answer and three wrong ones, it's tempting to turn that into four cards, but we don't do that.
+All four options test the same piece of knowledge, for example, if you know the capital of Australia, you'll get every variant right without thinking. 
+ Four cards would inflate the count and make the deck feel repetitive, which is the opposite of what a card set is for.
+ 
+### False cards swap a value instead of adding "not"
+ 
+Each fact produces two cards: one true, one false.
+The lazy way to make a false card is to insert "not". The problem is that players learn fast, so if every false card contains "not", you can win by scanning for that word without ever reading the statement.
+So instead, the false card replaces the key detail with a believable wrong one:
+ > The Nile flows **northward**. → The Nile flows **southward**.
+ 
+'cardgen check' keeps us honest by counting negation words on both sides. On the shipped set, negation words are actually about 1.67 percentage points *more* common in true cards than in false ones, so "not" gives nothing away.
+ 
+### Verification is blind, and humans settle disagreements
+ 
+The checking model never sees the stored answer, it has to decide for itself.
+This matters because negation is where true and false most often get flipped by mistake, and translation is a close second. When the model disagrees with the stored answer, nothing is fixed automatically, and the card goes into 'work/review-queue.json' and waits for a person.
+A card with the wrong answer is the worst bug this tool can ship, especially during an evaluation, so we'd rather be slow than wrong.
+ 
+### Facts that might go stale get flagged
+ 
+Some statements quietly stop being true. Anything containing words like "currently", "the most recent", "record", "the only", a superlative, or a recent year is flagged. Superlatives are the tricky ones, ie, "The largest ocean" will be true for a very long time; "the largest company" might not survive the year. So superlatives are flagged for a human to look at, never thrown out automatically.
+ 
+### Eight categories instead of OpenTDB's 24
+ 
+OpenTDB has narrow categories like board games, vehicles and anime, and they never have enough facts to keep a category room going, and a room that runs dry after two matches is worse than no room at all.
+'convert.ts' folds the 24 OpenTDB categories into 8 broader ones.
+ 
+## Why the raw download is committed
+ 
+'data/raw/questions.json' is where everything downstream starts. Keeping it in the repo means:
+- you can rerun and recheck every later step without downloading again;
+- if OpenTDB is down, the offline steps and the evaluation still work.
 
 ## Licence
-
-The output is CC BY-SA 4.0, inherited from OpenTDB. See `LICENSE-CARDS.md` at
-the repository root.
+ The card set is licensed **CC BY-SA 4.0**, inherited from OpenTDB. See 'LICENSE-CARDS.md' at the repository root.
