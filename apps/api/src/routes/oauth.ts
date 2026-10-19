@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { DEFAULT_LOCALE } from '@wkb/shared';
+import { DEFAULT_LOCALE, displayNameSchema, toDisplayName } from '@wkb/shared';
 import { prisma } from '../db.js';
+import { displayNameTaken, isDisplayNameClash } from '../lib/displayNames.js';
 import {
   cookieSecure,
   env,
@@ -54,6 +55,14 @@ interface ProviderProfile {
   avatarUrl: string | null;
 }
 
+/* Every call to a provider gets a time limit. Without one, a provider that never answers keeps the sign in request,
+and the visitor's browser, waiting for good */
+const PROVIDER_TIMEOUT_MS = 10_000;
+
+function providerFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS) });
+}
+
 /* Maps Host header values (with and without port) to configured origins. 'PUBLIC_ORIGIN' is first in 'publicOrigins', so it wins any collision */
 const ORIGIN_BY_HOST = new Map<string, string>();
 for (const origin of [...publicOrigins].reverse()) 
@@ -94,7 +103,7 @@ async function exchangeCode(
   origin: string,
 ): Promise<string> {
   const config = oauthProviders[provider];
-  const response = await fetch(ENDPOINTS[provider].token, {
+  const response = await providerFetch(ENDPOINTS[provider].token, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body: new URLSearchParams({
@@ -125,7 +134,7 @@ async function fetchProfile(
   };
   if (provider === 'google') 
   {
-    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers });
+    const response = await providerFetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers });
     if (!response.ok) 
       throw badRequest('error.oauth.profileFailed');
     const profile = (await response.json()) as {
@@ -148,7 +157,7 @@ async function fetchProfile(
   }
   if (provider === '42') 
   {
-    const response = await fetch('https://api.intra.42.fr/v2/me', { headers });
+    const response = await providerFetch('https://api.intra.42.fr/v2/me', { headers });
     if (!response.ok) 
       throw badRequest('error.oauth.profileFailed');
     const profile = (await response.json()) as {
@@ -169,7 +178,7 @@ async function fetchProfile(
       avatarUrl: profile.image?.versions?.medium ?? profile.image?.link ?? null,
     };
   }
-  const response = await fetch('https://api.github.com/user', { headers });
+  const response = await providerFetch('https://api.github.com/user', { headers });
   if (!response.ok) 
     throw badRequest('error.oauth.profileFailed');
   const profile = (await response.json()) as {
@@ -183,7 +192,7 @@ async function fetchProfile(
   if (!email) 
   {
     // GitHub hides the address unless it is public; ask for the verified one.
-    const emailResponse = await fetch('https://api.github.com/user/emails', { headers });
+    const emailResponse = await providerFetch('https://api.github.com/user/emails', { headers });
     if (emailResponse.ok) 
     {
       const emails = (await emailResponse.json()) as {
@@ -204,19 +213,22 @@ async function fetchProfile(
   };
 }
 
-// Display names are unique; a taken one gets a numeric suffix.
+/* Display names are unique, ignoring case; a taken one gets a numeric suffix. The provider's name is cleaned with the same rules as the
+profile form ('toDisplayName'), otherwise the account would be created with a name its owner then could not save when editing the profile.
+At most 20 characters, which leaves room for the suffix within the 24 allowed */
 async function uniqueDisplayName(preferred: string): Promise<string> {
-  const base = preferred.trim().slice(0, 20).replace(/[^\p{L}\p{N} _.-]/gu, '') || 'player';
-  const padded = base.length >= 3 ? base : `${base}_player`.slice(0, 20);
-  for (let attempt = 0; attempt < 50; attempt += 1) 
+  const base = toDisplayName(preferred, 20);
+  const padded = base.length >= 3 ? base : base ? `${base}_player` : 'player';
+  for (let attempt = 0; attempt < 50; attempt += 1)
   {
-    const candidate = attempt === 0 ? padded : `${padded.slice(0, 20)}${attempt}`;
-    const taken = await prisma.user.findUnique({ where: { displayName: candidate } });
-    if (!taken) 
+    const candidate = attempt === 0 ? padded : `${padded}${attempt}`;
+    if (displayNameSchema.safeParse(candidate).success && !(await displayNameTaken(candidate)))
       return candidate;
   }
-  return `player_${token(4)}`;
+  return fallbackDisplayName();
 }
+
+const fallbackDisplayName = () => `player_${token(4)}`;
 
 // Finds the account for a provider identity: existing link, then matching email, then a new account
 async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile): Promise<number> {
@@ -235,19 +247,27 @@ async function resolveUser(provider: OAuthProviderName, profile: ProviderProfile
     });
     return byEmail.id;
   }
-  const created = await prisma.user.create({
-    data: {
-      email: profile.email,
-      displayName: await uniqueDisplayName(profile.displayName),
-      // No password; the account is provider only until the user sets one 
-      passwordHash: null,
-      avatarUrl: profile.avatarUrl,
-      locale: DEFAULT_LOCALE,
-      lastSeenAt: new Date(),
-      oauthAccounts: { create: { provider, providerUserId: profile.providerUserId } },
-    },
-  });
-  return created.id;
+  const create = (displayName: string) =>
+    prisma.user.create({
+      data: {
+        email: profile.email,
+        displayName,
+        // No password; the account is provider only until the user sets one
+        passwordHash: null,
+        avatarUrl: profile.avatarUrl,
+        locale: DEFAULT_LOCALE,
+        lastSeenAt: new Date(),
+        oauthAccounts: { create: { provider, providerUserId: profile.providerUserId } },
+      },
+    });
+  try {
+    return (await create(await uniqueDisplayName(profile.displayName))).id;
+  } catch (error) {
+    // Someone took the chosen name between the check and the insert; a random one can't clash in practice
+    if (!isDisplayNameClash(error))
+      throw error;
+    return (await create(fallbackDisplayName())).id;
+  }
 }
 
 export async function oauthRoutes(app: FastifyInstance): Promise<void> {

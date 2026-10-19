@@ -29,12 +29,13 @@ export async function registerLobbyChannel(app: FastifyInstance): Promise<void> 
     channel.startHeartbeat();
     if (wasOffline) 
       announcePresence(redeemed.userId, true);
+    // Not awaited by anyone, so it must not reject; an unhandled rejection would end the process
     void (async () => {
       channel.send({ type: 'lobby:rooms', rooms: await listPublicRooms() });
-      await prisma.user
-        .update({ where: { id: redeemed.userId }, data: { lastSeenAt: new Date() } })
-        .catch(() => undefined);
-    })();
+      await prisma.user.update({ where: { id: redeemed.userId }, data: { lastSeenAt: new Date() } });
+    })().catch((error: unknown) => {
+      request.log.warn({ err: error, userId: redeemed.userId }, 'lobby socket setup failed');
+    });
     const presenceTimer = setInterval(() => {
       void prisma.user
         .update({ where: { id: redeemed.userId }, data: { lastSeenAt: new Date() } })
@@ -42,20 +43,27 @@ export async function registerLobbyChannel(app: FastifyInstance): Promise<void> 
     }, 30_000);
 
     socket.on('message', (raw: Buffer) => {
+      const admitted = channel.admit();
+      if (admitted === 'close')
+        return channel.close(1008, 'rate limited');
+      if (admitted === 'drop')
+        return;
       let event: ClientLobbyEvent;
       try {
         event = JSON.parse(raw.toString()) as ClientLobbyEvent;
       } catch {
         return;
       }
-      if (event?.type === 'pong') channel.handlePong(Number(event.t));
+      if (event?.type === 'pong')
+        channel.handlePong(Number(event.t));
     });
 
     socket.on('close', () => {
       clearInterval(presenceTimer);
       channel.markClosed();
       leaveLobby(channel);
-      if (!onlineUserIds().has(redeemed.userId)) announcePresence(redeemed.userId, false);
+      if (!onlineUserIds().has(redeemed.userId))
+        announcePresence(redeemed.userId, false);
     });
 
     socket.on('error', () => {

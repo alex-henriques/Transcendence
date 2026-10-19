@@ -167,7 +167,7 @@
     "displayName": {
       "tooShort": "Use ao menos 3 caracteres.",
       "tooLong": "Use no máximo 24 caracteres.",
-      "invalidChars": "Apenas letras, dígitos, espaços, pontos, hifens e sublinhados."
+      "invalidChars": "Comece com uma letra ou um dígito. Apenas letras latinas (acentos são aceitos), dígitos, espaços, pontos, hifens e sublinhados."
     },
     "roomName": {
       "tooShort": "Use ao menos 3 caracteres.",
@@ -238,14 +238,17 @@
       "creationFailed": "Não foi possível criar a sala. Tente de novo.",
       "botAlreadyIn": "Esse adversário já está na sala.",
       "cannotRemoveHost": "O anfitrião não pode ser removido.",
-      "removed": "O anfitrião removeu você da sala."
+      "removed": "O anfitrião removeu você da sala.",
+      "tooMany": "Você criou muitas salas na última hora. Entre em uma sala existente ou tente mais tarde."
     },
     "match": {
       "alreadyRunning": "Já há uma partida em andamento.",
       "hostOnly": "Só o anfitrião pode fazer isso.",
       "needsTwoPlayers": "São necessários ao menos dois jogadores. Adicione um adversário.",
       "roomFull": "Há mais jogadores do que a sala permite.",
-      "notEnoughCards": "Cartas insuficientes para essas opções."
+      "notEnoughCards": "Cartas insuficientes para essas opções.",
+      "voteFailed": "Não foi possível salvar sua resposta. Responda de novo.",
+      "aborted": "A partida foi interrompida por um problema do nosso lado. O anfitrião pode começar uma nova."
     },
     "tournament": {
       "hostOnly": "Só o organizador pode fazer isso.",
@@ -253,7 +256,8 @@
       "full": "Este torneio está cheio.",
       "needsFullBracket": "Preencha todas as vagas antes de começar.",
       "notEnoughBots": "Não há adversários suficientes para completar a chave.",
-      "wrongPlayers": "Somente os dois jogadores sorteados podem jogar esta partida. Adicione o adversário mostrado na chave."
+      "wrongPlayers": "Somente os dois jogadores sorteados podem jogar esta partida. Adicione o adversário mostrado na chave.",
+      "tooMany": "Você já tem três torneios com inscrições abertas. Comece ou complete um deles primeiro."
     },
     "ws": {
       "badTicket": "Não foi possível autenticar sua conexão.",

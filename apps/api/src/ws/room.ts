@@ -10,6 +10,9 @@ import { getSession, setSession } from '../game/registry.js';
 import { markMatchupPlaying } from '../services/tournament.js';
 import { availableDeckSize } from '../game/draw.js';
 
+// A real client joins once per connection. Guessing private room codes would take thousands, so a socket gets a few tries and is then closed
+const MAX_FAILED_JOINS = 5;
+
 /* This is the match channel; a socket has no room until it sends 'room:join', so a first join and a reconnection 
 use the same handshake and get the same 'room:state' snapshot.*/
 export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
@@ -43,7 +46,20 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
     Without this, a client that sends 'add_bot' and 'match:start' back to back can have the start read the room before
     the bot is in it, and be told it needs a second player.*/
     let inOrder: Promise<void> = Promise.resolve();
+    let failedJoins = 0;
+    const failJoin = (code: string) => {
+      failedJoins += 1;
+      fail(code);
+      if (failedJoins >= MAX_FAILED_JOINS)
+        channel.close(1008, 'too many failed joins');
+    };
     socket.on('message', (raw: Buffer) => {
+      // Checked before parsing, so a flood costs as little as possible
+      const admitted = channel.admit();
+      if (admitted === 'close')
+        return channel.close(1008, 'rate limited');
+      if (admitted === 'drop')
+        return fail('error.rateLimited');
       let event: ClientRoomEvent;
       try {
         event = JSON.parse(raw.toString()) as ClientRoomEvent;
@@ -63,16 +79,16 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             if (session) 
               return fail('error.ws.alreadyJoined');
             const parsedCode = roomCodeSchema.safeParse(event.code);
-            if (!parsedCode.success) 
-              return fail('error.room.notFound');
+            if (!parsedCode.success)
+              return failJoin('error.room.notFound');
             const room = await prisma.room.findUnique({ where: { code: parsedCode.data } });
             if (!room)
-              return fail('error.room.notFound');
+              return failJoin('error.room.notFound');
             const matchup = await prisma.tournamentMatchup.findFirst({
               where: { roomId: room.id, status: { in: ['ready', 'playing'] } }
             });
             if (matchup && channel.userId !== matchup.playerAId && channel.userId !== matchup.playerBId)
-              return fail('error.room.full');
+              return failJoin('error.room.full');
             let existing = getSession(room.id);
             if (!existing) 
             {
@@ -81,12 +97,10 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             }
             // A player already in the running match is reconnecting; anyone else is joining, and a full match has no seat for them.
             const rejoining = existing.isInMatch(channel.userId);
-            if (!rejoining && existing.hasMatch) 
-              return fail('error.room.matchInProgress');
-            if (!rejoining && !existing.hasMatch && existing.participantCount() >= room.maxPlayers) 
-            {
-              return fail('error.room.full');
-            }
+            if (!rejoining && existing.hasMatch)
+              return failJoin('error.room.matchInProgress');
+            if (!rejoining && !existing.hasMatch && existing.participantCount() >= room.maxPlayers)
+              return failJoin('error.room.full');
             session = existing;
             existing.attach(channel);
             if (rejoining) 
@@ -148,15 +162,14 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             });
             if (matchup)
               return fail('error.tournament.alreadyStarted');
-            if (room.mode === 'category' && parsed.data.categoryIds.length === 0) {
+            if (room.mode === 'category' && parsed.data.categoryIds.length === 0)
               return fail('error.validation');
-            }
-              const available = await availableDeckSize({
-                categoryIds: parsed.data.categoryIds,
-                difficulty: room.difficulty,
-              });
-              if (available < 4)
-                return fail('error.room.notEnoughCards');
+            const available = await availableDeckSize({
+              categoryIds: parsed.data.categoryIds,
+              difficulty: room.difficulty,
+            });
+            if (available < 4)
+              return fail('error.room.notEnoughCards');
             await prisma.roomSettings.update({
               where: { roomId: session.roomId },
               data: {
@@ -186,7 +199,8 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             const profile = await prisma.botProfile.findUnique({
               where: { id: Number(event.profileId) },
             });
-            if (!profile) return fail('error.notFound');
+            if (!profile)
+              return fail('error.notFound');
             if (session.botIds().includes(profile.userId)) 
               return fail('error.room.botAlreadyIn');
             session.addBot(profile.userId);
@@ -268,7 +282,9 @@ export async function registerRoomChannel(app: FastifyInstance): Promise<void> {
             await refreshEveryone(leaving);
           }
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          request.log.error({ err: error, userId: channel.userId }, 'room channel close handler failed');
+        });
     });
     socket.on('error', () => channel.markClosed());
   });

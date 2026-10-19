@@ -18,6 +18,11 @@ const schema = z.object({
   ACCESS_TOKEN_TTL: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL: z.coerce.number().int().positive().default(2_592_000),
 
+  /* The three demo accounts share a password that is printed by 'make' and shown on the login page. Fine for a local run or an evaluation,
+  unsafe on anything reachable from the internet, so they only exist when this is set to true. Off, the seed also locks any demo account
+  an earlier boot created */
+  SEED_DEMO_USERS: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
+
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
   GITHUB_CLIENT_ID: z.string().optional().default(''),

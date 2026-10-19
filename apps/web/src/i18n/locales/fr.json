@@ -167,7 +167,7 @@
     "displayName": {
       "tooShort": "Utilisez au moins 3 caractères.",
       "tooLong": "Utilisez au plus 24 caractères.",
-      "invalidChars": "Lettres, chiffres, espaces, points, tirets et tirets bas uniquement."
+      "invalidChars": "Commencez par une lettre ou un chiffre. Lettres latines (accents acceptés), chiffres, espaces, points, tirets et tirets bas uniquement."
     },
     "roomName": {
       "tooShort": "Utilisez au moins 3 caractères.",
@@ -238,14 +238,17 @@
       "creationFailed": "Impossible de créer le salon. Réessayez.",
       "botAlreadyIn": "Cet adversaire est déjà dans le salon.",
       "cannotRemoveHost": "L'hôte ne peut pas être retiré.",
-      "removed": "L'hôte vous a retiré du salon."
+      "removed": "L'hôte vous a retiré du salon.",
+      "tooMany": "Vous avez créé beaucoup de salons au cours de la dernière heure. Rejoignez-en un existant ou réessayez plus tard."
     },
     "match": {
       "alreadyRunning": "Une partie est déjà en cours.",
       "hostOnly": "Seul l'hôte peut faire cela.",
       "needsTwoPlayers": "Il faut au moins deux joueurs. Ajoutez un adversaire.",
       "roomFull": "Il y a plus de joueurs que le salon n'en autorise.",
-      "notEnoughCards": "Pas assez de cartes pour ces réglages."
+      "notEnoughCards": "Pas assez de cartes pour ces réglages.",
+      "voteFailed": "Votre réponse n'a pas pu être enregistrée. Répondez à nouveau.",
+      "aborted": "Le match a été interrompu à cause d'un problème de notre côté. L'hôte peut en lancer un nouveau."
     },
     "tournament": {
       "hostOnly": "Seul l'organisateur peut faire cela.",
@@ -253,7 +256,8 @@
       "full": "Ce tournoi est complet.",
       "needsFullBracket": "Remplissez toutes les places avant de commencer.",
       "notEnoughBots": "Il n'y a pas assez d'adversaires pour compléter le tableau.",
-      "wrongPlayers": "Seuls les deux joueurs tirés au sort peuvent jouer ce match. Ajoutez l'adversaire indiqué dans le tableau."
+      "wrongPlayers": "Seuls les deux joueurs tirés au sort peuvent jouer ce match. Ajoutez l'adversaire indiqué dans le tableau.",
+      "tooMany": "Vous avez déjà trois tournois ouverts aux inscriptions. Lancez ou complétez-en un d'abord."
     },
     "ws": {
       "badTicket": "Votre connexion n'a pas pu être authentifiée.",

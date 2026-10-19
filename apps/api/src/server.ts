@@ -9,6 +9,7 @@ import { AVATAR_MAX_BYTES } from '@wkb/shared';
 import './types.js';
 import { prisma } from './db.js';
 import { env } from './env.js';
+import { setLogger } from './lib/logger.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { authRoutes } from './routes/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
@@ -21,6 +22,7 @@ import { tournamentRoutes } from './routes/tournaments.js';
 import { UPLOAD_DIR, userRoutes } from './routes/users.js';
 import { registerLobbyChannel } from './ws/lobby.js';
 import { registerRoomChannel } from './ws/room.js';
+import { startMaintenance } from './services/maintenance.js';
 
 async function build() {
   const app = Fastify({
@@ -78,14 +80,26 @@ async function build() {
 
 async function main(): Promise<void> {
   const app = await build();
+  setLogger(app.log);
+  /* Safety net. Every promise in the match loop handles its own errors, but one that slips through would otherwise end the process
+  (Node's default for an unhandled rejection), and every live match in every room with it. It's logged and the server carries on */
+  process.on('unhandledRejection', (reason) => {
+    app.log.error({ err: reason }, 'unhandled promise rejection');
+  });
+  let stopMaintenance: (() => void) | null = null;
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
+    stopMaintenance?.();
+    let exitCode = 0;
     try {
       await app.close();
       await prisma.$disconnect();
-    } finally {
-      process.exit(0);
+    } catch (error) {
+      // A shutdown that failed half way should not report success to Docker
+      app.log.error({ err: error }, 'shutdown failed');
+      exitCode = 1;
     }
+    process.exit(exitCode);
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
@@ -95,6 +109,7 @@ async function main(): Promise<void> {
     app.log.error({ err: error }, 'failed to start');
     process.exit(1);
   }
+  stopMaintenance = startMaintenance();
 }
 
 void main();

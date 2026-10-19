@@ -27,6 +27,8 @@ export function Login(): JSX.Element {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [providers, setProviders] = useState<string[]>([]);
+  // Only when the server seeded them (SEED_DEMO_USERS); a deployment without them shouldn't advertise a password that doesn't work
+  const [demoAccounts, setDemoAccounts] = useState(false);
   useEffect(() => {
     const oauthError = new URLSearchParams(location.search).get('oauth_error');
     if (oauthError) 
@@ -35,9 +37,12 @@ export function Login(): JSX.Element {
   useEffect(() => {
     let cancelled = false;
     void api
-      .get<{ providers: string[] }>('/api/auth/providers')
+      .get<{ providers: string[]; demoAccounts?: boolean }>('/api/auth/providers')
       .then((payload) => {
-        if (!cancelled) setProviders(payload.providers);
+        if (cancelled)
+          return;
+        setProviders(payload.providers);
+        setDemoAccounts(payload.demoAccounts === true);
       })
       .catch(() => undefined);
     return () => {
@@ -66,7 +71,9 @@ export function Login(): JSX.Element {
       {
         setErrors(error.fields);
         setFormError(error.code);
-      } else {
+      }
+      else
+      {
         setFormError('error.internal');
       }
     } finally {
@@ -139,30 +146,32 @@ export function Login(): JSX.Element {
         </p>
       </div>
 
-      <div className="panel mt-4 px-5 py-4">
-        <p className="text-xs font-semibold text-muted">
-          {t('auth.demoTitle')}
-        </p>
-        <ul className="mt-2 space-y-1">
-          {DEMO_ACCOUNTS.map((account) => (
-            <li key={account}>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail(account);
-                  setPassword(DEMO_PASSWORD);
-                }}
-                className="-mx-2 inline-block px-2 py-1 font-mono text-xs text-ink-soft transition hover:text-spot-strong"
-              >
-                {account}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-xs text-muted">
-          {t('auth.demoHint', { password: DEMO_PASSWORD })}
-        </p>
-      </div>
+      {demoAccounts && (
+        <div className="panel mt-4 px-5 py-4">
+          <p className="text-xs font-semibold text-muted">
+            {t('auth.demoTitle')}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {DEMO_ACCOUNTS.map((account) => (
+              <li key={account}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail(account);
+                    setPassword(DEMO_PASSWORD);
+                  }}
+                  className="-mx-2 inline-block px-2 py-1 font-mono text-xs text-ink-soft transition hover:text-spot-strong"
+                >
+                  {account}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            {t('auth.demoHint', { password: DEMO_PASSWORD })}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

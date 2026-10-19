@@ -18,12 +18,35 @@ export const passwordSchema = z
   .refine((v) => /[a-z]/i.test(v), 'validation.password.needsLetter')
   .refine((v) => /[0-9]/.test(v), 'validation.password.needsDigit');
 
+/* Latin letters (ASCII plus the accented letters of French, Portuguese and most European languages) and the digits 0-9.
+Names sit side by side on the leaderboard, and other alphabets bring look-alikes: a Cyrillic 'а' is a different letter that is drawn
+exactly like the Latin one, so "Аda" could pass for "Ada". The input is NFKC normalised first, which turns full width and other
+compatibility forms ("Ａｄａ") into plain letters and joins an accent typed as a separate character onto its letter.
+Uniqueness ignores case on top of this; that part is enforced by the database */
+const NAME_CHARS = 'A-Za-z0-9\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u017E';
+const NAME_PATTERN = new RegExp(`^[${NAME_CHARS}][${NAME_CHARS} _.-]*$`);
+
 export const displayNameSchema = z
   .string()
-  .trim()
-  .min(3, 'validation.displayName.tooShort')
-  .max(24, 'validation.displayName.tooLong')
-  .regex(/^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u, 'validation.displayName.invalidChars');
+  .transform((value) => value.normalize('NFKC').trim())
+  .pipe(
+    z
+      .string()
+      .min(3, 'validation.displayName.tooShort')
+      .max(24, 'validation.displayName.tooLong')
+      .regex(NAME_PATTERN, 'validation.displayName.invalidChars'),
+  );
+
+/* Turns free text, like the name an OAuth provider sends, into something 'displayNameSchema' accepts: same normalisation and characters,
+starting with a letter or digit, at most 'maxLength' long. May come back shorter than the 3 character minimum, even empty */
+export function toDisplayName(raw: string, maxLength = 24): string {
+  return raw
+    .normalize('NFKC')
+    .replace(new RegExp(`[^${NAME_CHARS} _.-]`, 'g'), '')
+    .replace(/^[ _.-]+/, '')
+    .slice(0, maxLength)
+    .trim();
+}
 
 export const localeSchema = z.enum(LOCALES);
 export const difficultySchema = z.enum(DIFFICULTIES);

@@ -23,3 +23,4 @@ export const notFound = (code = 'error.notFound') => new HttpError(404, code);
 export const conflict = (code: string, fields?: Record<string, string>) =>
   new HttpError(409, code, fields);
 export const tooLarge = (code = 'error.payloadTooLarge') => new HttpError(413, code);
+export const tooMany = (code = 'error.rateLimited') => new HttpError(429, code);

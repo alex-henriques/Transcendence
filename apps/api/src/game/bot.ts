@@ -57,10 +57,10 @@ export function decideBotAnswer(params: {
 
   // No one reacts in under 400 ms, and a sample past the deadline is a bot that didn't answer in time
   const floor = Math.min(400, Math.round(windowMs * 0.1));
-  if (delayMs < floor) delayMs = floor;
-  if (delayMs >= windowMs) {
+  if (delayMs < floor)
+    delayMs = floor;
+  if (delayMs >= windowMs)
     return { choice: null, delayMs: windowMs };
-  }
 
   return { choice, delayMs };
 }

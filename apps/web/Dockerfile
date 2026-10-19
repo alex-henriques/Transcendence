@@ -16,12 +16,7 @@ COPY apps/web ./apps/web
 
 RUN npm run build -w @wkb/shared && npm run build -w @wkb/web
 
-# runtime 
-#FROM nginx:1.27-alpine AS runtime
-#COPY --from=build /app/apps/web/dist /usr/share/nginx/html
-#COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
-#EXPOSE 80
-
+# runtime: the unprivileged image runs nginx as a non-root user
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf

@@ -131,7 +131,7 @@ export const DEMO_USERS = [
 
 export const DEMO_PASSWORD = 'Password1!';
 
-//Demo accounts are shared by everyone trying the app, so the settings that would break them for the next person staty fixed.
+//Demo accounts are shared by everyone trying the app, so the settings that would break them for the next person stay fixed.
 export function isDemoAccount(email: string): boolean {
   return DEMO_USERS.some((demo) => demo.email === email);
 }

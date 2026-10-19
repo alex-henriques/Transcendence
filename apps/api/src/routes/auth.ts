@@ -10,6 +10,7 @@ import { prisma } from '../db.js';
 import { cookieSecure, env, oauthProviders } from '../env.js';
 import { badRequest, conflict, forbidden,  unauthorized } from '../lib/httpError.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
+import { displayNameTaken, isDisplayNameClash } from '../lib/displayNames.js';
 import { sessionUser } from '../lib/serialize.js';
 import { isDemoAccount } from '../seed/data.js';
 import {
@@ -47,25 +48,29 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     config: { rateLimit: { max: 30, timeWindow: '10 minutes' } },
     handler: async (request, reply) => {
       const input = signupSchema.parse(request.body);
-      const existing = await prisma.user.findFirst({
-        where: { OR: [{ email: input.email }, { displayName: input.displayName }] },
-        select: { email: true, displayName: true },
-      });
-      if (existing) 
-      {
-        throw conflict('error.auth.accountExists', {
-          [existing.email === input.email ? 'email' : 'displayName']: 'error.alreadyExists',
+      const emailTaken = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
+      if (emailTaken)
+        throw conflict('error.auth.accountExists', { email: 'error.alreadyExists' });
+      // Ignoring case: "ada" is taken when "Ada" exists
+      if (await displayNameTaken(input.displayName))
+        throw conflict('error.auth.accountExists', { displayName: 'error.alreadyExists' });
+      let user;
+      try {
+        user = await prisma.user.create({
+          data: {
+            email: input.email,
+            displayName: input.displayName,
+            passwordHash: await hashPassword(input.password),
+            locale: input.locale ?? DEFAULT_LOCALE,
+            lastSeenAt: new Date(),
+          },
         });
+      } catch (error) {
+        // Two sign ups racing for the same name, or one that only differs in the case of an accented letter
+        if (isDisplayNameClash(error))
+          throw conflict('error.auth.accountExists', { displayName: 'error.alreadyExists' });
+        throw error;
       }
-      const user = await prisma.user.create({
-        data: {
-          email: input.email,
-          displayName: input.displayName,
-          passwordHash: await hashPassword(input.password),
-          locale: input.locale ?? DEFAULT_LOCALE,
-          lastSeenAt: new Date(),
-        },
-      });
 
       /* Creating an account does not start a session; no access token, no refresh cookie. The new account goes to the sign-in screen and types
       the password it just chose, which is the first time anyone finds out whether that password is really the one they meant.*/
@@ -105,14 +110,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     if (!presented) 
       return { authenticated: false };
     const rotated = await rotateRefreshToken(presented);
-    if (!rotated) 
+    if (!rotated)
     {
-      if (!(await wasJustRotated(presented)))
-        clearRefreshCookie(reply);
+      /* Another tab renewed with this same cookie a moment ago. Its answer carries the fresh cookie, which the browser stores for every tab,
+      so the session is fine: this tab is told to ask again shortly instead of being told its session is over */
+      if (await wasJustRotated(presented))
+        return { authenticated: false, retry: true };
+      clearRefreshCookie(reply);
       return { authenticated: false };
     }
     const user = await prisma.user.findUnique({ where: { id: rotated.userId } });
-    if (!user) {
+    if (!user)
+    {
       clearRefreshCookie(reply);
       return { authenticated: false };
     }
@@ -129,10 +138,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     if (!presented) 
       throw unauthorized('error.auth.noSession');
     const rotated = await rotateRefreshToken(presented);
-    if (!rotated) 
+    if (!rotated)
     {
-      if (!(await wasJustRotated(presented)))
-        clearRefreshCookie(reply);
+      // Same race as above. 409 rather than 401: the session is not over, the client should simply ask again
+      if (await wasJustRotated(presented))
+        throw conflict('error.auth.refreshRace');
+      clearRefreshCookie(reply);
       throw unauthorized('error.auth.sessionExpired');
     }
     const user = await prisma.user.findUnique({ where: { id: rotated.userId } });
@@ -187,11 +198,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     setRefreshCookie(reply, await issueRefreshToken(me.id));
     return { ok: true };
   });
-  // Which OAuth buttons the sign-in screen should render
+  // Which OAuth buttons the sign-in screen should render, and whether it should list the demo accounts
   app.get('/api/auth/providers', async () => ({
     providers: Object.entries(oauthProviders)
       .filter(([, config]) => config.enabled)
       .map(([name]) => name),
+    demoAccounts: env.SEED_DEMO_USERS,
   }));
   app.post('/api/ws/ticket', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);

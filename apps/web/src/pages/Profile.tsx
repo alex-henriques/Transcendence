@@ -113,7 +113,9 @@ export function Profile(): JSX.Element {
         body.append('avatar', avatar.file);
         const result = await api.upload<{ avatarUrl: string }>('/api/users/me/avatar', body);
         avatarUrl = result.avatarUrl;
-      } else if (avatar.kind === 'remove') {
+      }
+      else if (avatar.kind === 'remove')
+      {
         await api.del('/api/users/me/avatar');
         avatarUrl = null;
       }
@@ -141,7 +143,9 @@ export function Profile(): JSX.Element {
       {
         setErrors(error.fields);
         setProblem(error.code);
-      } else setProblem('error.internal');
+      }
+      else
+        setProblem('error.internal');
     } finally {
       setBusy(false);
     }
@@ -167,7 +171,9 @@ export function Profile(): JSX.Element {
       {
         setPasswordErrors(error.fields);
         setPasswordProblem(error.code);
-      } else setPasswordProblem('error.internal');
+      }
+      else
+        setPasswordProblem('error.internal');
     }
   };
   const exportData = async () => {
@@ -203,7 +209,9 @@ export function Profile(): JSX.Element {
       {
         setDataErrors(error.fields);
         setDataProblem(error.code);
-      } else setDataProblem('error.internal');
+      }
+      else
+        setDataProblem('error.internal');
       setClosing(false);
     }
   };

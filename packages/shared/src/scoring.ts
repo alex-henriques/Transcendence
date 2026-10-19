@@ -39,6 +39,14 @@ export function computeScore(input: ScoreInput): ScoreResult {
 
 const MAX_TRUSTED_RTT_MS = 1_000;
 
+/* The most network delay a reaction is credited with. The round trip estimate comes from the client's own pongs, which a client can hold back
+on purpose to look slower than it is, so the allowance is capped and holding pongs back can buy at most this much */
+export const MAX_LATENCY_ALLOWANCE_MS = 250;
+
+/* Decides the reaction time that is scored. 'serverElapsedMs' runs from the moment the server sent the card to the moment the vote arrived,
+so it is the reaction plus one round trip; the round trip (capped) is taken off and the rest is what gets scored. The client's own claim
+is never scored, it is only compared with the measurement: a claim that can't be true (outside the window the network allows) marks
+the vote untrusted, and an untrusted vote gets the slowest time */
 export function validateReaction(params: {
   claimedMs: number;
   serverElapsedMs: number;
@@ -48,12 +56,13 @@ export function validateReaction(params: {
 }): { acceptedMs: number; trusted: boolean } {
   const { claimedMs, serverElapsedMs, windowMs } = params;
   const tolerance = params.toleranceMs ?? 250;
-  const rttMs = Math.min(params.rttMs, MAX_TRUSTED_RTT_MS);
+  const rttMs = Math.min(Math.max(0, params.rttMs), MAX_TRUSTED_RTT_MS);
   const lower = Math.max(0, serverElapsedMs - rttMs - tolerance);
   const upper = serverElapsedMs + tolerance;
   const trusted =
     Number.isFinite(claimedMs) && claimedMs >= 0 && claimedMs >= lower && claimedMs <= upper;
-  const acceptedMs = trusted ? Math.min(claimedMs, windowMs) : windowMs;
+  const measuredMs = Math.max(0, Math.round(serverElapsedMs - Math.min(rttMs, MAX_LATENCY_ALLOWANCE_MS)));
+  const acceptedMs = trusted ? Math.min(measuredMs, windowMs) : windowMs;
   return { acceptedMs, trusted };
 }
 

@@ -175,11 +175,14 @@ export function VoteButtons({
 
   // Keyboard shortcuts, a quiz played against a clock should not require aim
   useEffect(() => {
-    if (disabled) return undefined;
+    if (disabled)
+      return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey)
+        return;
       const target = event.target as HTMLElement | null;
-      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName))
+        return;
       if (event.key === '1' || event.key.toLowerCase() === 't') onVote('truth');
       if (event.key === '2' || event.key.toLowerCase() === 'm') onVote('myth');
     };

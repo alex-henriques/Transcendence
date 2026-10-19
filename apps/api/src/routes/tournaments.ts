@@ -1,18 +1,22 @@
 import type { FastifyInstance } from 'fastify';
-import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { createTournamentSchema } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { badRequest, forbidden,  notFound } from '../lib/httpError.js';
+import { badRequest, forbidden, notFound, tooMany } from '../lib/httpError.js';
 import { shuffle } from '../lib/random.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
-import { bracketView, startTournament } from '../services/tournament.js';
+import { bracketView, lockTournament, startTournament } from '../services/tournament.js';
 import { availableDeckSize } from '../game/draw.js';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
-async function lockTournament(tx: Prisma.TransactionClient, id: number): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM tournaments WHERE id = ${id} FOR UPDATE`;
+// How many tournaments one account can have open for registration at the same time
+const OPEN_TOURNAMENTS_PER_USER = 3;
+
+/* The next free seed. Seeds are not a count: after someone leaves, 'participants.length' is a seed that is already taken.
+'startTournament' renumbers everyone anyway; this only keeps the registration list in a sensible order until then */
+function nextSeed(participants: { seed: number }[]): number {
+  return participants.reduce((highest, p) => Math.max(highest, p.seed), -1) + 1;
 }
 
 export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
@@ -34,9 +38,15 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       })),
     };
   });
-  app.post('/api/tournaments', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/api/tournaments', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const me = currentUser(request);
     const input = createTournamentSchema.parse(request.body);
+    const open = await prisma.tournament.count({ where: { createdById: me.id, status: 'registration' } });
+    if (open >= OPEN_TOURNAMENTS_PER_USER)
+      throw tooMany('error.tournament.tooMany');
     const available = await availableDeckSize({ categoryIds: [], difficulty: input.difficulty });
     if (available < 4)
       throw badRequest('error.room.notEnoughCards');
@@ -75,24 +85,27 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
         throw badRequest('error.tournament.alreadyStarted');
       if (tournament.participants.some((p) => p.userId === me.id))
         return;
-      if (tournament.participants.length >= tournament.size) {
+      if (tournament.participants.length >= tournament.size)
         throw badRequest('error.tournament.full');
-      }
       await tx.tournamentParticipant.create({
-        data: { tournamentId: id, userId: me.id, seed: tournament.participants.length },
+        data: { tournamentId: id, userId: me.id, seed: nextSeed(tournament.participants) },
       });
     });
     return { tournament: await bracketView(id) };
   });
+  // Under the same lock as join, fill and start, so a seat can't be given up while the bracket is being drawn from it
   app.delete('/api/tournaments/:id/leave', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const { id } = idParam.parse(request.params);
-    const tournament = await prisma.tournament.findUnique({ where: { id } });
-    if (!tournament) 
-      throw notFound();
-    if (tournament.status !== 'registration') 
-      throw badRequest('error.tournament.alreadyStarted');
-    await prisma.tournamentParticipant.deleteMany({ where: { tournamentId: id, userId: me.id } });
+    await prisma.$transaction(async (tx) => {
+      await lockTournament(tx, id);
+      const tournament = await tx.tournament.findUnique({ where: { id } });
+      if (!tournament)
+        throw notFound();
+      if (tournament.status !== 'registration')
+        throw badRequest('error.tournament.alreadyStarted');
+      await tx.tournamentParticipant.deleteMany({ where: { tournamentId: id, userId: me.id } });
+    });
     return { tournament: await bracketView(id) };
   });
 
@@ -120,8 +133,8 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       const available = shuffle(bots.map((b) => b.id).filter((botId) => !taken.has(botId)));
       if (available.length < seatsLeft)
         throw badRequest('error.tournament.notEnoughBots');
-      let seed = tournament.participants.length;
-      for( const botId of available.slice(0, seatsLeft)) 
+      let seed = nextSeed(tournament.participants);
+      for (const botId of available.slice(0, seatsLeft))
       {
         await tx.tournamentParticipant.create({ data: { tournamentId: id, userId: botId, seed } });
         seed += 1;

@@ -24,7 +24,8 @@ export async function buildRoomSummary(room: RoomWithRelations): Promise<RoomSum
       select: { slug: true, name: true },
       orderBy: { name: 'asc' },
     });
-  } else if (room.category) 
+  }
+  else if (room.category)
   {
     categories = [{ slug: room.category.slug, name: room.category.name }];
   }
@@ -37,7 +38,9 @@ export async function buildRoomSummary(room: RoomWithRelations): Promise<RoomSum
     difficulty: room.difficulty,
     status: room.status,
     categories,
-    playerCount: session?.participantCount() ?? 0,
+    /* Nobody is in a room whose humans have all gone, even while its match waits for them to come back (the abandon grace period);
+    0 here is what takes it off the lobby list */
+    playerCount: session && !session.isEmpty ? session.participantCount() : 0,
     maxPlayers: room.maxPlayers,
     hostDisplayName: room.host.displayName,
   };
@@ -53,8 +56,9 @@ export async function roomSummaryById(roomId: number): Promise<RoomSummary | nul
 /* It starts from the rooms the engine has occupants for, then loads those from the database,
 because querying the newest rooms first could miss a busy older one  */
 export async function listPublicRooms(): Promise<RoomSummary[]> {
+  // A human has to be in it; bots alone, waiting out the grace period for players who left, are not worth listing
   const occupied = activeSessions()
-    .filter((session) => session.participantCount() > 0)
+    .filter((session) => !session.isEmpty)
     .map((session) => session.roomId);
   if (occupied.length === 0) 
     return [];

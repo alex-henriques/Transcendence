@@ -109,6 +109,8 @@ model User {
   email        String    @unique
   /// Argon2id. Null for bots and for OAuth-only accounts.
   passwordHash String?   @map("password_hash")
+  /// Also unique without regard to case, through an index on lower(display_name) that Prisma
+  /// cannot express. It is created in migration 20261013120000_display_name_case_insensitive.
   displayName  String    @unique @map("display_name")
   avatarUrl    String?   @map("avatar_url")
   locale       String    @default("en")

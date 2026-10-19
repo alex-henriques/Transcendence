@@ -36,12 +36,13 @@ export function Signup(): JSX.Element {
       // Straight to the sign-in screen with the address carried across so there is only the password left to type.
       navigate('/login', { replace: true, state: { registered: true, email: parsed.data.email } });
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof ApiError)
+      {
         setErrors(error.fields);
         setFormError(error.code);
-      } else {
-        setFormError('error.internal');
       }
+      else
+        setFormError('error.internal');
     } finally {
       setBusy(false);
     }

@@ -87,9 +87,12 @@ export interface RoomChannel extends RoomChannelState {
 
 /*Everything here is driven by the server. The hook never decides that time is up, never computes a score, and never advances a card, ie,
  it renders what the server has already decided. The one number it produces is the local reaction time, measured from the moment the card was painted. 
- Even that is only a claim, and the server checks it against the connection's round trip time.*/
+ Even that is only a claim: the server checks it against its own clock and the connection's round trip time, and scores its own measurement.*/
 export function useRoomChannel(code: string | null): RoomChannel {
   const [state, setState] = useState<RoomChannelState>(EMPTY);
+  // The latest rendered state, for callbacks that must read it without going through a state updater
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const socketRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const retryRef = useRef<number | null>(null);
@@ -218,7 +221,12 @@ export function useRoomChannel(code: string | null): RoomChannel {
           }));
           break;
         case 'error':
-          setState((current) => ({ ...current, error: parsed.code }));
+          setState((current) => ({
+            ...current,
+            error: parsed.code,
+            // The server could not save the vote and withdrew it, so the buttons unlock and the player can answer again
+            myVote: parsed.code === 'error.match.voteFailed' ? null : current.myVote,
+          }));
           break;
         default:
           break;
@@ -254,19 +262,19 @@ export function useRoomChannel(code: string | null): RoomChannel {
   }, [code, connect]);
   // Tell the server when the player switches language so the cards follow.
   useEffect(() => onLocaleChange((locale) => send({ type: 'locale:set', locale })), [send]);
+  /* The vote is sent from here, not from inside a state updater: React may run an updater twice (StrictMode does on purpose),
+  and an updater that sends would send the vote twice. The ref is moved on at once, so a second click before the next render is ignored too */
   const vote = useCallback(
     (choice: Vote) => {
-      setState((current) => {
-        if (!current.card || current.myVote || current.phase !== 'collecting') return current;
-        const reactionMs = current.renderedAt ? Date.now() - current.renderedAt : current.card.windowMs;
-        send({
-          type: 'card:vote',
-          matchCardId: current.card.matchCardId,
-          choice,
-          reactionMs,
-        });
-        return { ...current, myVote: choice };
-      });
+      const current = stateRef.current;
+      const card = current.card;
+      if (!card || current.myVote || current.phase !== 'collecting')
+        return;
+      const reactionMs = current.renderedAt ? Date.now() - current.renderedAt : card.windowMs;
+      send({ type: 'card:vote', matchCardId: card.matchCardId, choice, reactionMs });
+      stateRef.current = { ...current, myVote: choice };
+      // Shown straight away; 'vote:ack' confirms it, and 'error.match.voteFailed' takes it back
+      setState((latest) => (latest.card?.matchCardId === card.matchCardId ? { ...latest, myVote: choice } : latest));
     },
     [send],
   );

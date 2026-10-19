@@ -10,28 +10,33 @@ import {
   updateProfileSchema,
 } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { badRequest, conflict, forbidden,  notFound, tooLarge, unauthorized } from '../lib/httpError.js';
-import { EXTENSION, sniffImage } from '../lib/images.js';
-import { publicProfile, sessionUser } from '../lib/serialize.js';
+import { badRequest, forbidden, notFound, tooLarge, unauthorized } from '../lib/httpError.js';
+import { EXTENSION, sniffImage, stripMetadata } from '../lib/images.js';
+import { displayNameConflict, displayNameTaken, isDisplayNameClash } from '../lib/displayNames.js';
+import { log } from '../lib/logger.js';
+import { publicProfile, publicProfileSelect, sessionUser } from '../lib/serialize.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { verifyPassword } from '../lib/password.js';
 import { isDemoAccount } from '../seed/data.js';
 import { clearRefreshCookie } from './auth.js';
-import { activeSessions, onlineUserIds } from '../game/registry.js';
+import { activeSessions, isOnline, onlineUserIds } from '../game/registry.js';
 import { computeUserStats, matchHistory } from '../services/stats.js';
 import { forfeitTournaments } from '../services/tournament.js';
 
 export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 
-// A user counts as online while a lobby socket is open, or seen very recently
-const ONLINE_WINDOW_MS = 90_000;
+// A file that is already gone is fine; any other failure leaves an orphan on disk, which is worth a line in the log but not a failed request
+async function removeUpload(file: string): Promise<void> {
+  await unlink(file).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT')
+      log.warn({ err: error, file: path.basename(file) }, 'could not delete uploaded file');
+  });
+}
 
-function isOnline(userId: number, lastSeenAt: Date | null, live: Set<number>): boolean {
-  if (live.has(userId)) 
-    return true;
-  if (!lastSeenAt) 
-    return false;
-  return Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
+// Deletes the file behind an avatar URL when it's one of ours; stock avatars and provider pictures are not files
+async function removeUploadedAvatar(avatarUrl: string | null | undefined): Promise<void> {
+  if (avatarUrl?.startsWith('/api/uploads/'))
+    await removeUpload(path.join(UPLOAD_DIR, path.basename(avatarUrl)));
 }
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -48,14 +53,11 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       });
       if (account && isDemoAccount(account.email) && input.displayName !== account.displayName)
         throw forbidden();
-      const taken = await prisma.user.findFirst({
-        where: { displayName: input.displayName, id: { not: me.id } },
-        select: { id: true },
-      });
-      if (taken) 
-        throw conflict('error.alreadyExists', { displayName: 'error.alreadyExists' });
+      // Ignoring case, and not counting this account, so changing only the case of your own name is allowed
+      if (await displayNameTaken(input.displayName, me.id))
+        throw displayNameConflict();
     }
-    /*Set only once, ie, a repeat visit to /setup must not overwrite the satrt date, so we check the row 'currentUser has only id an name,
+    /*Set only once, ie, a repeat visit to /setup must not overwrite the start date, so we check the row ('currentUser' has only id and name)
     and write only if it's still null */
     let onboardedAt: Date | undefined;
     if (input.onboarded) 
@@ -69,33 +71,41 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     }
     // Choosing a stock avatar replaces whatever was there, including an uploaded file, which is then orphaned on disk unless it is removed here.
     let avatarUrl: string | null | undefined;
-    if (input.avatarPreset !== undefined) 
+    let replacedAvatar: string | null = null;
+    if (input.avatarPreset !== undefined)
     {
       const previous = await prisma.user.findUnique({
         where: { id: me.id },
         select: { avatarUrl: true },
       });
-      const old = previous?.avatarUrl;
-      if (old?.startsWith('/api/uploads/')) 
-      {
-        await unlink(path.join(UPLOAD_DIR, path.basename(old))).catch(() => undefined);
-      }
+      replacedAvatar = previous?.avatarUrl ?? null;
       avatarUrl = input.avatarPreset === null ? null : presetToStored(input.avatarPreset);
     }
-    const user = await prisma.user.update({
-      where: { id: me.id },
-      data: {
-        ...(input.displayName ? { displayName: input.displayName } : {}),
-        ...(input.locale ? { locale: input.locale } : {}),
-        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
-        ...(onboardedAt ? { onboardedAt } : {}),
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id: me.id },
+        data: {
+          ...(input.displayName ? { displayName: input.displayName } : {}),
+          ...(input.locale ? { locale: input.locale } : {}),
+          ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+          ...(onboardedAt ? { onboardedAt } : {}),
+        },
+      });
+    } catch (error) {
+      // Someone took the name between the check above and this write, or it differs from theirs only in an accent's case
+      if (isDisplayNameClash(error))
+        throw displayNameConflict();
+      throw error;
+    }
+    // Deleted only once the profile no longer points at it; done first, a failed update would leave the profile showing a missing file
+    if (avatarUrl !== undefined)
+      await removeUploadedAvatar(replacedAvatar);
     return { user: sessionUser(user), locale: user.locale, displayName: user.displayName };
   });
 
 /*  Everything stored about this account, as one JSON document. Built from the tables, not the UI read models. 'password_hash' is left out on purpose,
-because it's uselss to the owner and something to crack offline for anyone who hijacked the session */
+because it's useless to the owner and something to crack offline for anyone who hijacked the session */
   app.get('/api/users/me/export', { preHandler: requireAuth }, async (request, reply) => {
     const me = currentUser(request);
     const [user, oauth, friendships, achievements, seenFacts, players, tournaments] =
@@ -248,12 +258,8 @@ so no id is left pointing at a deleted person */
       }
     }
     await forfeitTournaments(me.id);
-    for (const session of activeSessions()) 
+    for (const session of activeSessions())
       session.forgetPlayer(me.id);
-    if (user.avatarUrl?.startsWith('/api/uploads/')) 
-    {
-      await unlink(path.join(UPLOAD_DIR, path.basename(user.avatarUrl))).catch(() => undefined);
-    }
     await prisma.$transaction([
       prisma.tournamentMatchup.updateMany({ where: { playerAId: me.id }, data: { playerAId: null } }),
       prisma.tournamentMatchup.updateMany({ where: { playerBId: me.id }, data: { playerBId: null } }),
@@ -262,6 +268,8 @@ so no id is left pointing at a deleted person */
       prisma.tournament.updateMany({ where: { createdById: me.id }, data: { createdById: null } }),
       prisma.user.delete({ where: { id: me.id } }),
     ]);
+    // After the delete has committed; had it failed, the account would still be pointing at this file
+    await removeUploadedAvatar(user.avatarUrl);
     clearRefreshCookie(reply);
     return { deleted: true };
   });
@@ -276,33 +284,39 @@ so no id is left pointing at a deleted person */
     if (buffer.byteLength > AVATAR_MAX_BYTES) 
       throw tooLarge('error.avatar.tooLarge');
     const kind = sniffImage(buffer);
-    if (!kind) 
+    if (!kind)
+      throw badRequest('error.avatar.unsupportedType');
+    // The file is served at a public URL, so the EXIF, XMP and text metadata (camera, date, GPS position) is removed first
+    const cleaned = stripMetadata(buffer, kind);
+    if (!cleaned)
       throw badRequest('error.avatar.unsupportedType');
     const filename = `${randomUUID()}.${EXTENSION[kind]}`;
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const stored = path.join(UPLOAD_DIR, filename);
+    await writeFile(stored, cleaned);
     const previous = await prisma.user.findUnique({
       where: { id: me.id },
       select: { avatarUrl: true },
     });
-    const user = await prisma.user.update({
-      where: { id: me.id },
-      data: { avatarUrl: `/api/uploads/${filename}` },
-    });
-    const old = previous?.avatarUrl;
-    if (old?.startsWith('/api/uploads/')) 
-    {
-      await unlink(path.join(UPLOAD_DIR, path.basename(old))).catch(() => undefined);
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id: me.id },
+        data: { avatarUrl: `/api/uploads/${filename}` },
+      });
+    } catch (error) {
+      // Nothing points at the new file, so it goes; the old one is untouched and still in use
+      await removeUpload(stored);
+      throw error;
     }
+    // Only now that the profile points at the new file is the old one safe to delete
+    await removeUploadedAvatar(previous?.avatarUrl);
     return { avatarUrl: user.avatarUrl };
   });
   app.delete('/api/users/me/avatar', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const user = await prisma.user.findUnique({ where: { id: me.id }, select: { avatarUrl: true } });
-    if (user?.avatarUrl?.startsWith('/api/uploads/')) 
-    {
-      await unlink(path.join(UPLOAD_DIR, path.basename(user.avatarUrl))).catch(() => undefined);
-    }
     await prisma.user.update({ where: { id: me.id }, data: { avatarUrl: null } });
+    await removeUploadedAvatar(user?.avatarUrl);
     // Null means "render the default avatar", which the frontend generates from the display name
     return { avatarUrl: null };
   });
@@ -318,6 +332,7 @@ so no id is left pointing at a deleted person */
           ? { displayName: { contains: query.search, mode: 'insensitive' as const } }
           : {}),
       },
+      select: publicProfileSelect,
       orderBy: { displayName: 'asc' },
       take: 25,
     });
@@ -330,8 +345,8 @@ so no id is left pointing at a deleted person */
   });
   app.get('/api/users/:id', { preHandler: requireAuth }, async (request) => {
     const { id } = idParam.parse(request.params);
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) 
+    const user = await prisma.user.findUnique({ where: { id }, select: publicProfileSelect });
+    if (!user)
       throw notFound();
     const [stats, history, achievements] = await Promise.all([
       computeUserStats(id),

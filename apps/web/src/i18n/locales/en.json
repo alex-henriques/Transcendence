@@ -167,7 +167,7 @@
     "displayName": {
       "tooShort": "Use at least 3 characters.",
       "tooLong": "Use at most 24 characters.",
-      "invalidChars": "Letters, digits, spaces, dots, dashes and underscores only."
+      "invalidChars": "Start with a letter or digit. Latin letters (accents are fine), digits, spaces, dots, dashes and underscores only."
     },
     "roomName": {
       "tooShort": "Use at least 3 characters.",
@@ -238,14 +238,17 @@
       "creationFailed": "Could not create the room. Please try again.",
       "botAlreadyIn": "That opponent is already in the room.",
       "cannotRemoveHost": "The host cannot be removed.",
-      "removed": "The host removed you from the room."
+      "removed": "The host removed you from the room.",
+      "tooMany": "You have created a lot of rooms in the last hour. Join an existing one or try again later."
     },
     "match": {
       "alreadyRunning": "A match is already running.",
       "hostOnly": "Only the host can do that.",
       "needsTwoPlayers": "You need at least two players. Add an opponent.",
       "roomFull": "There are more players than the room allows.",
-      "notEnoughCards": "Not enough cards for these settings."
+      "notEnoughCards": "Not enough cards for these settings.",
+      "voteFailed": "Your answer could not be saved. Please answer again.",
+      "aborted": "The match was stopped because of a problem on our side. The host can start a new one."
     },
     "tournament": {
       "hostOnly": "Only the organiser can do that.",
@@ -253,7 +256,8 @@
       "full": "This tournament is full.",
       "needsFullBracket": "Fill every seat before starting.",
       "notEnoughBots": "There are not enough opponents to fill the bracket.",
-      "wrongPlayers": "Only the two drawn players can play this match. Add the opponent shown in the bracket."
+      "wrongPlayers": "Only the two drawn players can play this match. Add the opponent shown in the bracket.",
+      "tooMany": "You already have three tournaments open for registration. Start or fill one of them first."
     },
     "ws": {
       "badTicket": "Your connection could not be authenticated.",

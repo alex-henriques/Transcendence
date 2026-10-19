@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Prisma } from '@prisma/client';
 import { DEFAULT_LOCALE, LOCALES } from '@wkb/shared';
 import { prisma } from '../db.js';
+import { env } from '../env.js';
 import { hashPassword } from '../lib/password.js';
 import {
   ACHIEVEMENTS,
@@ -102,7 +103,8 @@ async function seedCardSet(): Promise<{ categories: number; facts: number; cards
 }
 
 async function seedAchievements(): Promise<number> {
-  for (const achievement of ACHIEVEMENTS) {
+  for (const achievement of ACHIEVEMENTS)
+  {
     // The rule blob is opaque to Prisma; services/rewards.ts is what reads it.
     const criteria = achievement.criteria as Prisma.InputJsonObject;
     await prisma.achievement.upsert({
@@ -158,24 +160,46 @@ async function seedBots(): Promise<number> {
 }
 
 async function seedDemoUsers(): Promise<number> {
-  const passwordHash = await hashPassword(DEMO_PASSWORD);
-
-  for (const demo of DEMO_USERS) 
+  const emails = DEMO_USERS.map((demo) => demo.email);
+  if (!env.SEED_DEMO_USERS)
   {
-    await prisma.user.upsert({
-      where: { email: demo.email },
-      create: {
-        email: demo.email,
-        displayName: demo.displayName,
-        passwordHash,
-        locale: demo.locale,
-        onboardedAt: new Date(),
-      },
-      // Do not reset the password of an account somebody has been using.
-      update: { displayName: demo.displayName },
+    /* Turned off. Accounts an earlier boot created are kept, with their history, but lose the public password so nobody can sign in to them.
+    A demo account can't set a password of its own, so there is no real one to lose */
+    const locked = await prisma.user.updateMany({
+      where: { email: { in: emails }, passwordHash: { not: null } },
+      data: { passwordHash: null },
     });
+    if (locked.count > 0)
+      console.log(`[seed] SEED_DEMO_USERS is off; locked ${locked.count} demo account(s)`);
+    return 0;
   }
-  return DEMO_USERS.length;
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  let seeded = 0;
+  for (const demo of DEMO_USERS)
+  {
+    try {
+      await prisma.user.upsert({
+        where: { email: demo.email },
+        create: {
+          email: demo.email,
+          displayName: demo.displayName,
+          passwordHash,
+          locale: demo.locale,
+          onboardedAt: new Date(),
+        },
+        update: { displayName: demo.displayName },
+      });
+      // Unlocks an account a boot with demo users off had locked. One that has a password keeps it
+      await prisma.user.updateMany({ where: { email: demo.email, passwordHash: null }, data: { passwordHash } });
+      seeded += 1;
+    } catch (error) {
+      // A person already took the name (demo users were off when they signed up). That is no reason to stop the server from starting
+      if ((error as { code?: string }).code !== 'P2002')
+        throw error;
+      console.warn(`[seed] demo account ${demo.email} skipped: the name ${demo.displayName} is taken`);
+    }
+  }
+  return seeded;
 }
 
 async function main(): Promise<void> {

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Locale } from '@wkb/shared';
-import { api, onSessionExpired, setAccessToken } from '../api/client.js';
+import { api, onSessionExpired, RENEWAL_RACE_RETRIES, setAccessToken, wait } from '../api/client.js';
 import { isLocale, setLocale } from '../i18n/index.js';
 
 export interface SessionUser {
@@ -35,7 +35,8 @@ interface AuthResponse {
 }
 
 type SessionProbe =
-  | { authenticated: false }
+  // 'retry': another tab renewed the shared cookie at the same moment, so the session is fine and asking again shortly will show it
+  | { authenticated: false; retry?: boolean }
   | ({ authenticated: true } & AuthResponse);
 
 interface AuthContextValue {
@@ -77,8 +78,13 @@ the second is just the login screen.*/
   }, []);
   const restore = useCallback(async (): Promise<boolean> => {
     try {
-      const probe = await api.get<SessionProbe>('/api/auth/session');
-      if (!probe.authenticated) 
+      let probe = await api.get<SessionProbe>('/api/auth/session');
+      for (let attempt = 0; !probe.authenticated && probe.retry && attempt < RENEWAL_RACE_RETRIES; attempt += 1)
+      {
+        await wait(250 * (attempt + 1));
+        probe = await api.get<SessionProbe>('/api/auth/session');
+      }
+      if (!probe.authenticated)
       {
         setAccessToken(null);
         setUser(null);

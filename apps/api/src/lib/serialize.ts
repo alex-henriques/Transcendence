@@ -46,6 +46,17 @@ export function sessionUser(user: {
   };
 }
 
+// The columns 'publicProfile' reads, for queries that only need those rather than the whole row
+export const publicProfileSelect = {
+  id: true,
+  displayName: true,
+  avatarUrl: true,
+  xp: true,
+  isBot: true,
+  lastSeenAt: true,
+  createdAt: true,
+} as const;
+
 //What other users see. Never include the email
 export function publicProfile(user: {
   id: number;

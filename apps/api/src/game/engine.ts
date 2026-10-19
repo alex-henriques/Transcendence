@@ -20,6 +20,7 @@ import {
   validateReaction,
 } from '@wkb/shared';
 import { prisma } from '../db.js';
+import { log } from '../lib/logger.js';
 import type { Channel } from '../ws/connection.js';
 import { announceRoom, announceRoomRemoved, dropSession } from './registry.js';
 import { drawMatchDeck } from './draw.js';
@@ -87,7 +88,7 @@ interface ActiveMatch {
 }
 
 /* One room and the match running in it. The server owns the clock. It sets 'served_at' and 'deadline_at'.
-Votes after 'deadline_at' are rejected, whatever the time browser shows. */
+Votes after 'deadline_at' are rejected, whatever time the browser shows. */
 export class RoomSession {
   readonly roomId: number;
   readonly code: string;
@@ -163,8 +164,8 @@ export class RoomSession {
     return [...this.channels];
   }
 
-  /* Handles a player switching language mid match. The socket's locale is fixed at connect tim, so we resend the room snapshot, not just the card;
-  it carries 'remainingMS', so the countdown continues and anm existing vote is kept*/
+  /* Handles a player switching language mid match. The socket's locale is fixed at connect time, so we resend the room snapshot, not just the card;
+  it carries 'remainingMs', so the countdown continues and an existing vote is kept*/
   async retranslate(channel: Channel, locale: Locale): Promise<void> {
     if (channel.locale === locale) 
       return;
@@ -192,8 +193,10 @@ export class RoomSession {
 
   //Host removed a player from the lobby
   kick(userId: number): void {
-    if (this.match) return;
-    for (const channel of this.channelsFor(userId)) {
+    if (this.match)
+      return;
+    for (const channel of this.channelsFor(userId))
+    {
       channel.send({ type: 'error', code: 'error.room.removed', message: 'error.room.removed' });
       this.channels.delete(channel);
       channel.close(4403, 'removed');
@@ -380,10 +383,10 @@ the socket as a normal error event.*/
         where: { roomId: this.roomId, status: { in: ['ready', 'playing'] } },
       });
       const tournamentId = matchup?.tournamentId ?? null;
-      if (matchup) 
+      if (matchup)
       {
-        const drawn = [matchup.playerAId, matchup.playerBId];
-        const exact = participants.length === 2 && drawn.every((id) => id !== null && participants.includes(id));
+        const seated = [matchup.playerAId, matchup.playerBId];
+        const exact = participants.length === 2 && seated.every((id) => id !== null && participants.includes(id));
         if (!exact)
           return 'error.tournament.wrongPlayers';
       }
@@ -427,8 +430,9 @@ the socket as a normal error event.*/
       /* The scoreboard is meant to be visible at all times, so send the opening one now. Without it the sidebar stays empty through the first card,
       which is exactly when a player is sizing up who they are against*/
       this.broadcast({ type: 'scoreboard:update', scoreboard: this.scoreboard() });
+      // Scheduled before anything else can fail, a match that is set but has no timer would sit on its countdown forever
+      this.schedule(() => this.runStep(m, 'serve', () => this.serveNext()), MATCH_COUNTDOWN_MS);
       await this.publishRoom();
-      this.schedule(() => void this.serveNext(), MATCH_COUNTDOWN_MS);
       return null;
     } finally {
       this.starting = false;
@@ -568,18 +572,23 @@ the socket as a normal error event.*/
     m.phaseEndsAt = deadlineAt;
     m.phase = 'collecting';
 
-    /*Announce first, stamp the closck and send the card in the same tick, so a slow database write can't eat into the players' time after
-    'deadlineAt' is fixed. Nopthing is lost, the in memory deadline is the one enforced and sent to reconnecting clients*/
-    for (const channel of this.channels) 
+    /*Announce first, stamp the clock and send the card in the same tick, so a slow database write can't eat into the players' time after
+    'deadlineAt' is fixed. Nothing is lost, the in memory deadline is the one enforced and sent to reconnecting clients*/
+    for (const channel of this.channels)
     {
       channel.send({ type: 'card:served', card: this.servedCardFor(entry, channel.locale, m) });
     }
     this.scheduleBots(entry, m);
-    this.schedule(() => void this.reveal(), m.windowMs);
-    await prisma.matchCard.update({
-      where: { id: entry.matchCardId },
-      data: { servedAt: new Date(servedAt), deadlineAt: new Date(deadlineAt) },
-    });
+    this.schedule(() => this.runStep(m, 'reveal', () => this.reveal()), m.windowMs);
+    // Bookkeeping only; the reveal is already scheduled, so a failed write is logged and the match carries on
+    try {
+      await prisma.matchCard.update({
+        where: { id: entry.matchCardId },
+        data: { servedAt: new Date(servedAt), deadlineAt: new Date(deadlineAt) },
+      });
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not record served card');
+    }
   }
 
   private scheduleBots(entry: DeckEntry, m: ActiveMatch): void {
@@ -599,15 +608,17 @@ the socket as a normal error event.*/
       const choice = decision.choice;
       const timer = setTimeout(() => {
         this.botTimers.delete(timer);
-        void this.applyVote({
-          userId: player.userId,
-          matchCardId: entry.matchCardId,
-          choice,
-          acceptedMs: decision.delayMs,
-          clientReactionMs: decision.delayMs,
-          rttMs: 0,
-          trusted: true,
-        });
+        this.runStep(m, 'bot vote', () =>
+          this.applyVote({
+            userId: player.userId,
+            matchCardId: entry.matchCardId,
+            choice,
+            acceptedMs: decision.delayMs,
+            clientReactionMs: decision.delayMs,
+            rttMs: 0,
+            trusted: true,
+          }),
+        );
       }, decision.delayMs);
       this.botTimers.add(timer);
     }
@@ -638,12 +649,16 @@ the socket as a normal error event.*/
       rttMs: params.channel.rttMs,
       windowMs: m.windowMs,
     });
+    // Stored for the record only. A missing or absurd claim must still fit the integer column, or the insert fails and the vote is lost
+    const claimedMs = Number.isFinite(params.reactionMs)
+      ? Math.min(Math.max(0, Math.round(params.reactionMs)), m.windowMs * 10)
+      : 0;
     await this.applyVote({
       userId: params.channel.userId,
       matchCardId: params.matchCardId,
       choice: params.choice,
       acceptedMs,
-      clientReactionMs: Math.max(0, Math.round(params.reactionMs)),
+      clientReactionMs: claimedMs,
       rttMs: params.channel.rttMs,
       trusted,
     });
@@ -706,25 +721,50 @@ the socket as a normal error event.*/
           pointsAwarded: delta,
         },
       });
-    } catch {
-      if (m.phase === 'collecting') 
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId, userId: params.userId }, 'could not save vote');
+      // Still on this card, so the vote is withdrawn and the player is told, and can answer again before the deadline
+      if (this.match === m && m.deck[m.position] === entry && m.phase === 'collecting')
+      {
         m.votes.delete(params.userId);
+        this.sendTo(params.userId, { type: 'error', code: 'error.match.voteFailed', message: 'error.match.voteFailed' });
+      }
       return;
     }
 
+    /* The world may have moved on during the await: the deadline timer can have revealed this card already (the vote was reserved above,
+    so it was counted), and the next card's timer is now pending. Revealing again from here would clear that timer and freeze the match */
+    if (this.match !== m || m.deck[m.position] !== entry)
+      return;
     this.sendTo(params.userId, {
       type: 'vote:ack',
       matchCardId: entry.matchCardId,
       choice: params.choice,
     });
-
+    if (m.phase !== 'collecting')
+      return;
     // Everyone who could still answer has answered; reveal early.
-    const expected = [...m.players.values()].filter((p) => p.isBot || p.connected).length;
-    if (m.votes.size >= expected) 
+    if (this.everyoneAnswered(m))
     {
       this.clearPhaseTimer();
       await this.reveal();
     }
+  }
+
+  /* True once every player who can still answer has answered. Counted per player rather than with 'votes.size': a player who voted
+  and then dropped (a page reload) still has a vote in the map but is no longer expected, and counting it would reveal the card
+  before the players who are still here have had their turn */
+  private everyoneAnswered(m: ActiveMatch): boolean {
+    let expected = 0;
+    for (const player of m.players.values())
+    {
+      if (!player.isBot && !player.connected)
+        continue;
+      expected += 1;
+      if (!m.votes.has(player.userId))
+        return false;
+    }
+    return expected > 0;
   }
 
   private async reveal(): Promise<void> {
@@ -754,7 +794,8 @@ the socket as a normal error event.*/
           reactionMs: null,
           reactionTrusted: true,
         });
-      } else 
+      }
+      else
       {
         // 'vote.points' is already floored against the score at vote time
         player.score = Math.max(0, player.score + vote.points);
@@ -779,26 +820,35 @@ the socket as a normal error event.*/
       });
     }
     const humanIds = [...m.players.values()].filter((p) => !p.isBot).map((p) => p.userId);
-    await prisma.$transaction([
-      prisma.matchCard.update({
-        where: { id: entry.matchCardId },
-        data: { revealedAt: new Date() },
-      }),
-      ...playerUpdates.map((u) =>
-        prisma.matchPlayer.update({
-          where: { id: u.id },
-          data: { score: u.score, comboCurrent: u.combo, comboMax: u.comboMax },
+    /* The scores in memory are the ones the match runs on. If saving them fails, the match still goes on: the totals are written as absolute
+    values, so the next reveal that saves puts the rows right again. Stopping here would leave the room on this card with no timer */
+    try {
+      await prisma.$transaction([
+        prisma.matchCard.update({
+          where: { id: entry.matchCardId },
+          data: { revealedAt: new Date() },
         }),
-      ),
-      // Seen facts are keyed by fact, never by card; a player who has met one wording of a fact must never be served the other one
-      ...humanIds.map((userId) =>
-        prisma.userSeenFact.upsert({
-          where: { userId_factId: { userId, factId: entry.factId } },
-          create: { userId, factId: entry.factId },
-          update: { lastSeenAt: new Date() },
-        }),
-      ),
-    ]);
+        ...playerUpdates.map((u) =>
+          prisma.matchPlayer.update({
+            where: { id: u.id },
+            data: { score: u.score, comboCurrent: u.combo, comboMax: u.comboMax },
+          }),
+        ),
+        // Seen facts are keyed by fact, never by card; a player who has met one wording of a fact must never be served the other one
+        ...humanIds.map((userId) =>
+          prisma.userSeenFact.upsert({
+            where: { userId_factId: { userId, factId: entry.factId } },
+            create: { userId, factId: entry.factId },
+            update: { lastSeenAt: new Date() },
+          }),
+        ),
+      ]);
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not save reveal');
+    }
+    // A player may have left or the match may have been stopped while the scores were being saved
+    if (this.match !== m)
+      return;
     const isLast = m.position >= m.deck.length - 1;
     m.phaseEndsAt = Date.now() + REVEAL_HOLD_MS;
     // Everything except the correction is the same for everyone, so it is computed once; only the wording is per language, like 'card:served'
@@ -819,43 +869,62 @@ the socket as a normal error event.*/
       });
     }
     this.schedule(() => {
-      if (isLast) 
-        void this.finish();
-      else 
-        void this.serveNext();
+      if (isLast)
+        this.runStep(m, 'finish', () => this.finish());
+      else
+        this.runStep(m, 'serve', () => this.serveNext());
     }, REVEAL_HOLD_MS);
   }
 
   private async finish(): Promise<void> {
     const m = this.match;
-    if (!m) 
+    if (!m)
       return;
+    /* The last card was played to an empty room: every human left and the grace period hasn't run out yet. A match nobody stayed for
+    ends the way an abandoned one does, recording nothing, not as a result (and XP) for whoever the bots happened to beat */
+    if (this.isEmpty)
+    {
+      await this.abandonIfStillEmpty();
+      return;
+    }
     m.phase = 'scoreboard';
     this.clearBotTimers();
     this.clearPhaseTimer();
     const board = this.scoreboard();
-    await prisma.$transaction([
-      prisma.match.update({ where: { id: m.matchId }, data: { endedAt: new Date() } }),
-      ...board.map((row) => {
-        const player = m.players.get(row.userId);
-        return prisma.matchPlayer.update({
-          where: { id: player?.matchPlayerId ?? -1 },
-          data: { finalRank: row.rank },
-        });
-      }),
-    ]);
+    /* Every write below is allowed to fail on its own. Whatever happens, the players get their scoreboard and the room goes back to the lobby;
+    a throw here used to leave the room on 'scoreboard' with no timer and nothing to bring it back */
+    let recorded = false;
+    try {
+      await prisma.$transaction([
+        prisma.match.update({ where: { id: m.matchId }, data: { endedAt: new Date() } }),
+        ...board.map((row) => {
+          const player = m.players.get(row.userId);
+          return prisma.matchPlayer.update({
+            where: { id: player?.matchPlayerId ?? -1 },
+            data: { finalRank: row.rank },
+          });
+        }),
+      ]);
+      recorded = true;
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not record match result');
+    }
 
     let awards: MatchAward[] = [];
-    try {
-      awards = await grantMatchRewards(m.matchId);
-    } catch {
-      awards = [];
+    // XP and achievements are read from finished matches, so they are only granted for one that was recorded as finished
+    if (recorded)
+    {
+      try {
+        awards = await grantMatchRewards(m.matchId);
+      } catch (error) {
+        log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not grant match rewards');
+      }
     }
     let tournament: { id: number; advancedUserId: number | null } | null = null;
     try {
       tournament = await reportMatchResult(m.matchId);
-    } catch {
-      tournament = null;
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not report tournament result');
     }
     this.broadcast({
       type: 'match:ended',
@@ -865,13 +934,28 @@ the socket as a normal error event.*/
       tournament,
     });
     this.match = null;
-    // The room stays alive so the same group can play again 
-    await prisma.room.update({ where: { id: this.roomId }, data: { status: 'lobby' } });
+    this.lastResults = [];
+    await this.backToLobby();
+  }
+
+  /* The room stays alive so the same group can play again. Saves the status, re-advertises the room and resends the lobby view,
+  so clients leave the scoreboard cleanly. Never throws, it's the last step of every way a match can end */
+  private async backToLobby(): Promise<void> {
+    try {
+      await prisma.room.update({ where: { id: this.roomId }, data: { status: 'lobby' } });
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId }, 'could not reset room status');
+    }
     await this.publishRoom();
-    // Resend the lobby view so clients leave the scoreboard cleanly.
-    for (const channel of this.channels) {
-      const snap = await this.snapshot(channel);
-      if (snap) channel.send(snap);
+    for (const channel of this.channels)
+    {
+      try {
+        const snap = await this.snapshot(channel);
+        if (snap)
+          channel.send(snap);
+      } catch (error) {
+        log.error({ err: error, roomId: this.roomId }, 'could not send room snapshot');
+      }
     }
   }
 
@@ -888,20 +972,22 @@ the socket as a normal error event.*/
     if (!player || !player.connected) 
       return;
     player.connected = false;
-    await prisma.matchPlayer.update({
-      where: { id: player.matchPlayerId },
-      data: { connected: false, disconnectedAt: new Date() },
-    });
+    try {
+      await prisma.matchPlayer.update({
+        where: { id: player.matchPlayerId },
+        data: { connected: false, disconnectedAt: new Date() },
+      });
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, userId }, 'could not record disconnection');
+    }
+    if (this.match !== m)
+      return;
     this.broadcast({ type: 'scoreboard:update', scoreboard: this.scoreboard() });
     // The room may now be waiting on nobody.
-    if (m.phase === 'collecting') 
+    if (m.phase === 'collecting' && this.everyoneAnswered(m))
     {
-      const expected = [...m.players.values()].filter((p) => p.isBot || p.connected).length;
-      if (expected > 0 && m.votes.size >= expected) 
-      {
-        this.clearPhaseTimer();
-        await this.reveal();
-      }
+      this.clearPhaseTimer();
+      await this.reveal();
     }
   }
 
@@ -913,10 +999,14 @@ the socket as a normal error event.*/
     if (!player || player.connected) 
       return;
     player.connected = true;
-    await prisma.matchPlayer.update({
-      where: { id: player.matchPlayerId },
-      data: { connected: true, disconnectedAt: null },
-    });
+    try {
+      await prisma.matchPlayer.update({
+        where: { id: player.matchPlayerId },
+        data: { connected: true, disconnectedAt: null },
+      });
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId, userId }, 'could not record reconnection');
+    }
     this.broadcast({ type: 'scoreboard:update', scoreboard: this.scoreboard() });
   }
 
@@ -936,17 +1026,19 @@ the socket as a normal error event.*/
   }
 
   /* Handles a socket going away, ie, the player left, closed the tab or dropped. Both rules below must finish before anyone gets a new snapshot,
-  so the caller runds this first ans rerenders the room afterwards */
+  so the caller runs this first and rerenders the room afterwards */
   async handleDeparture(): Promise<void> {
     // A bot holds no socket, so an empty channel set is exactly "no humans left" and there is nobody for the bots to go on playing in front of
-    if (this.channels.size === 0) 
+    if (this.channels.size === 0)
     {
-    // for a moment a page reloads. give the players the grace period to come back first
+      // A page reload empties the room for a moment, so the players get a grace period to come back first
       if (this.match && !this.abandonTimer)
       {
         this.abandonTimer = setTimeout(() => {
           this.abandonTimer = null;
-          void this.abandonIfStillEmpty().catch(() => undefined);
+          this.abandonIfStillEmpty().catch((error: unknown) => {
+            log.error({ err: error, roomId: this.roomId }, 'could not abandon empty room');
+          });
         }, ABANDON_GRACE_MS);
       }
       return;
@@ -1003,15 +1095,49 @@ the socket as a normal error event.*/
           ),
         ]);
         await reportMatchResult(m.matchId);
-      } catch {
-        /* Recording the forfeit is best effort. Whatever happens to the bracket, the room still has to come back to the lobby below, 
+      } catch (error) {
+        /* Recording the forfeit is best effort. Whatever happens to the bracket, the room still has to come back to the lobby below,
         or it's stuck advertising a match that stopped. */
+        log.error({ err: error, roomId: this.roomId, matchId: m.matchId }, 'could not record tournament forfeit');
       }
     }
-    await prisma.room.update({ where: { id: this.roomId }, data: { status: 'lobby' } });
+    await this.backToLobby();
   }
 
   // Housekeeping
+
+  /* Runs one timer driven step of match 'm' (serve, reveal, finish, a bot's vote). Nothing awaits a timer callback, so a rejected promise
+  here would be unhandled, and Node ends the whole process on an unhandled rejection, dropping every match in every room.
+  The error is logged and the room is put back on its feet instead */
+  private runStep(m: ActiveMatch, step: string, fn: () => Promise<void>): void {
+    fn().catch((error: unknown) => {
+      log.error({ err: error, roomId: this.roomId, matchId: m.matchId, step }, 'match step failed');
+      this.recover(m).catch((recoverError: unknown) => {
+        log.error({ err: recoverError, roomId: this.roomId, matchId: m.matchId }, 'match recovery failed');
+      });
+    });
+  }
+
+  /* After a failed step nothing may be scheduled to move the match on, and the room would sit on the same screen forever.
+  If a timer is still pending the match is still moving and is left alone. Otherwise it is stopped like an abandoned one (nothing recorded,
+  'ended_at' stays null), the room goes back to the lobby and the players are told, so the host can simply start again.
+  A tournament matchup is left open rather than forfeited; nobody lost, the server did, and the same two players can replay it */
+  private async recover(m: ActiveMatch): Promise<void> {
+    if (this.match !== m || this.phaseTimer)
+      return;
+    this.clearBotTimers();
+    this.match = null;
+    this.lastResults = [];
+    await this.backToLobby();
+    if (this.isEmpty)
+    {
+      await this.dispose();
+      return;
+    }
+    // After the snapshots, which clear the client's error banner
+    this.broadcast({ type: 'error', code: 'error.match.aborted', message: 'error.match.aborted' });
+  }
+
   private schedule(fn: () => void, delayMs: number): void {
     this.clearPhaseTimer();
     this.phaseTimer = setTimeout(() => {
@@ -1034,10 +1160,15 @@ the socket as a normal error event.*/
     this.botTimers.clear();
   }
 
+  // Only an announcement to the lobby list, so a failure is logged and never stops the caller
   async publishRoom(): Promise<void> {
-    const summary = await roomSummaryById(this.roomId);
-    if (summary) 
-      announceRoom(summary);
+    try {
+      const summary = await roomSummaryById(this.roomId);
+      if (summary)
+        announceRoom(summary);
+    } catch (error) {
+      log.error({ err: error, roomId: this.roomId }, 'could not publish room');
+    }
   }
 
   // Called when the last socket leaves and no match is running

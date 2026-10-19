@@ -37,7 +37,8 @@ export async function requireAuth(request: FastifyRequest, _reply: FastifyReply)
 //Same as above, but leaves 'authUser' undefined instead of throwing
 export async function optionalAuth(request: FastifyRequest): Promise<void> {
   const raw = bearer(request);
-  if (!raw) return;
+  if (!raw)
+    return;
   const claims = await verifyAccessToken(raw);
   if (claims) 
     request.authUser = { id: claims.sub, displayName: claims.displayName };

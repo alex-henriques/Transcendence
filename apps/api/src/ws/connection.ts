@@ -2,6 +2,10 @@ import type { WebSocket } from 'ws';
 import type { Locale, ServerEvent } from '@wkb/shared';
 import { PING_INTERVAL_MS, PING_MAX_MISSED } from '@wkb/shared';
 
+// Incoming message budget per socket: a burst of this many, refilled at the steady rate below
+const MESSAGE_BURST = 30;
+const MESSAGE_REFILL_PER_SECOND = 5;
+
 /*One authenticated socket on either channel; it owns the heartbeat which does double duty, ie, 
 it detects dead connections and it produces the round trip time estimate the vote validator needs (spec §11).*/
 export class Channel {
@@ -16,6 +20,9 @@ export class Channel {
   private missed = 0;
   private closed = false;
   private readonly onDead: () => void;
+  private tokens = MESSAGE_BURST;
+  private refilledAt = Date.now();
+  private droppedInARow = 0;
 
   constructor(socket: WebSocket, userId: number, locale: Locale, onDead: () => void) {
     this.socket = socket;
@@ -26,6 +33,23 @@ export class Channel {
 
   get isOpen(): boolean {
     return !this.closed && this.socket.readyState === 1;
+  }
+
+  /* A token bucket. Every incoming message spends a token and tokens come back at a steady rate. Real play never gets close
+  (a pong every few seconds, one vote per card), but a client spamming 'room:join' with random codes, each one a database query, runs dry.
+  'drop' means ignore this message; 'close' means the client kept going with an empty bucket and the socket should go */
+  admit(): 'ok' | 'drop' | 'close' {
+    const now = Date.now();
+    this.tokens = Math.min(MESSAGE_BURST, this.tokens + ((now - this.refilledAt) / 1000) * MESSAGE_REFILL_PER_SECOND);
+    this.refilledAt = now;
+    if (this.tokens >= 1)
+    {
+      this.tokens -= 1;
+      this.droppedInARow = 0;
+      return 'ok';
+    }
+    this.droppedInARow += 1;
+    return this.droppedInARow > MESSAGE_BURST ? 'close' : 'drop';
   }
 
   send(event: ServerEvent): void {

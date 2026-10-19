@@ -59,10 +59,21 @@ export function announcePresence(userId: number, online: boolean): void {
   lobbyBroadcast({ type: 'presence:update', userId, online });
 }
 
-//Distinct users currently holding at least one lobby socket 
+//Distinct users currently holding at least one lobby socket
 export function onlineUserIds(): Set<number> {
   const ids = new Set<number>();
-  for (const channel of lobbyChannels) 
+  for (const channel of lobbyChannels)
     ids.add(channel.userId);
   return ids;
+}
+
+// A user counts as online while a lobby socket is open, or when seen very recently (the REST calls keep 'last_seen_at' fresh)
+const ONLINE_WINDOW_MS = 90_000;
+
+export function isOnline(userId: number, lastSeenAt: Date | null, live: Set<number>): boolean {
+  if (live.has(userId))
+    return true;
+  if (!lastSeenAt)
+    return false;
+  return Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
 }

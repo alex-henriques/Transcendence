@@ -27,11 +27,14 @@ export async function signAccessToken(claims: AccessClaims): Promise<string> {
 export async function verifyAccessToken(jwt: string): Promise<AccessClaims | null> {
   try {
     const { payload } = await jwtVerify(jwt, accessKey, {
+      // Only the algorithm this server signs with; a token naming any other is refused before its signature is looked at
+      algorithms: ['HS256'],
       issuer: ISSUER,
       audience: AUDIENCE,
     });
     const sub = Number(payload.sub);
-    if (!Number.isInteger(sub) || sub <= 0) return null;
+    if (!Number.isInteger(sub) || sub <= 0)
+      return null;
     return { sub, displayName: String(payload.displayName ?? '') };
   } catch {
     return null;
@@ -118,6 +121,7 @@ export async function revokeAllForUser(userId: number): Promise<void> {
 export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
+  if (ab.length !== bb.length)
+    return false;
   return timingSafeEqual(ab, bb);
 }

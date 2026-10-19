@@ -3,23 +3,14 @@ import { z } from 'zod';
 import { friendRequestSchema } from '@wkb/shared';
 import { prisma } from '../db.js';
 import { badRequest, notFound } from '../lib/httpError.js';
-import { publicProfile } from '../lib/serialize.js';
+import { publicProfile, publicProfileSelect } from '../lib/serialize.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
-import { onlineUserIds } from '../game/registry.js';
+import { isOnline, onlineUserIds } from '../game/registry.js';
 
 /* A friendship is one row: 'user_id' is who sent the request and 'friend_id' is who received it.
 One row per pair keeps it clear who asked who, and accepting it is just an update.*/
 
-const ONLINE_WINDOW_MS = 90_000;
 const idParam = z.object({ id: z.coerce.number().int().positive() });
-
-function online(userId: number, lastSeenAt: Date | null, live: Set<number>): boolean {
-  if (live.has(userId)) 
-    return true;
-  if (!lastSeenAt) 
-    return false;
-  return Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
-}
 
 export async function friendRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/friends', { preHandler: requireAuth }, async (request) => {
@@ -27,34 +18,37 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
     const rows = await prisma.friendship.findMany({
       where: { OR: [{ userId: me.id }, { friendId: me.id }] },
       include: {
-        user: true,
-        friend: true,
+        user: { select: publicProfileSelect },
+        friend: { select: publicProfileSelect },
       },
       orderBy: { createdAt: 'desc' },
     });
     const live = onlineUserIds();
     const decorate = (other: (typeof rows)[number]['user']) => ({
       ...publicProfile(other),
-      online: online(other.id, other.lastSeenAt, live),
+      online: isOnline(other.id, other.lastSeenAt, live),
     });
     const accepted = [];
     const incoming = [];
     const outgoing = [];
     const blocked = [];
-    for (const row of rows) 
+    const blockedByMe = new Set(rows.filter((row) => row.userId === me.id && row.status === 'blocked').map((row) => row.friendId));
+    for (const row of rows)
     {
       const iAmRequester = row.userId === me.id;
       const other = iAmRequester ? row.friend : row.user;
-      if (row.status === 'accepted') 
+      if (row.status === 'accepted')
         accepted.push(decorate(other));
-      else if (row.status === 'blocked') 
+      else if (row.status === 'blocked')
       {
         // Only the person who blocked sees the entry
-        if (iAmRequester) 
+        if (iAmRequester)
           blocked.push(decorate(other));
-      } else if (iAmRequester) 
+      }
+      else if (iAmRequester)
         outgoing.push(decorate(other));
-      else 
+      // A request from someone I blocked stays invisible to me
+      else if (!blockedByMe.has(row.userId))
         incoming.push(decorate(other));
     }
     return { accepted, incoming, outgoing, blocked };
@@ -62,46 +56,55 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/friends', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const { userId } = friendRequestSchema.parse(request.body);
-    if (userId === me.id) 
+    if (userId === me.id)
       throw badRequest('error.friends.self');
-    const target = await prisma.user.findUnique({ where: { id: userId } });
-    if (!target || target.isBot) 
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { isBot: true } });
+    if (!target || target.isBot)
       throw notFound();
-    const existing = await prisma.friendship.findFirst({
-      where: {
-        OR: [
-          { userId: me.id, friendId: userId },
-          { userId, friendId: me.id },
-        ],
-      },
-    });
-    if (existing) 
-    {
-      if (existing.status === 'blocked') 
+    /* Two people requesting each other at the same moment would each find no row and each create one, two pending requests instead of
+    a friendship. A transaction scoped lock on the pair (smaller id first, so both sides take the same one) makes the second wait for the first */
+    const status = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(${Math.min(me.id, userId)}::int4, ${Math.max(me.id, userId)}::int4)`;
+      const rows = await tx.friendship.findMany({
+        where: {
+          OR: [
+            { userId: me.id, friendId: userId },
+            { userId, friendId: me.id },
+          ],
+        },
+      });
+      const mine = rows.find((row) => row.userId === me.id);
+      const theirs = rows.find((row) => row.userId === userId);
+      if (mine?.status === 'blocked')
         throw badRequest('error.friends.blocked');
-      if (existing.status === 'accepted') 
-        return { status: 'accepted' };
+      if (mine?.status === 'accepted' || theirs?.status === 'accepted')
+        return 'accepted';
       // Requesting someone who already requested us accepts their request
-      if (existing.userId === userId) 
+      if (theirs?.status === 'pending')
       {
-        await prisma.friendship.update({
+        await tx.friendship.update({
           where: { userId_friendId: { userId, friendId: me.id } },
           data: { status: 'accepted' },
         });
-        return { status: 'accepted' };
+        return 'accepted';
       }
-      return { status: 'pending' };
-    }
-    await prisma.friendship.create({ data: { userId: me.id, friendId: userId, status: 'pending' } });
-    return { status: 'pending' };
+      /* If they blocked us, the request is still stored and looks pending from this side, like any other, while their list never shows it
+      (see the GET above). Answering "blocked" would tell the requester something the other person chose not to tell them */
+      if (!mine)
+        await tx.friendship.create({ data: { userId: me.id, friendId: userId, status: 'pending' } });
+      return 'pending';
+    });
+    return { status };
   });
   app.post('/api/friends/:id/accept', { preHandler: requireAuth }, async (request) => {
     const me = currentUser(request);
     const { id } = idParam.parse(request.params);
-    const pending = await prisma.friendship.findUnique({
-      where: { userId_friendId: { userId: id, friendId: me.id } },
-    });
-    if (!pending || pending.status !== 'pending') 
+    const [pending, mine] = await Promise.all([
+      prisma.friendship.findUnique({ where: { userId_friendId: { userId: id, friendId: me.id } } }),
+      prisma.friendship.findUnique({ where: { userId_friendId: { userId: me.id, friendId: id } } }),
+    ]);
+    // A request from someone I blocked is not shown to me, so it can't be accepted either
+    if (!pending || pending.status !== 'pending' || mine?.status === 'blocked')
       throw notFound();
     await prisma.friendship.update({
       where: { userId_friendId: { userId: id, friendId: me.id } },

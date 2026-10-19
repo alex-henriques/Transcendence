@@ -33,20 +33,24 @@ interface Criteria {
   minAnswers?: number;
 }
 
-/* Achievement rules are in the 'achievements.criteria' JSON, which this function reads. Adding a badge means changing the seed, not deploying*/
-async function unlockedSlugs(params: {
-  userId: number;
-  matchId: number;
-  level: number;
-}): Promise<string[]> {
+type RewardContext = Awaited<ReturnType<typeof loadRewardContext>>;
+
+// Everything the achievement rules read. None of it is changed by granting the rewards, so it can be read before the transaction
+async function loadRewardContext(userId: number, matchId: number) {
   const [stats, achievements, matchAnswers] = await Promise.all([
-    computeUserStats(params.userId),
+    computeUserStats(userId),
     prisma.achievement.findMany(),
     prisma.answer.findMany({
-      where: { matchPlayer: { userId: params.userId, matchId: params.matchId } },
+      where: { matchPlayer: { userId, matchId } },
       select: { isCorrect: true, acceptedReactionMs: true },
     }),
   ]);
+  return { stats, achievements, matchAnswers };
+}
+
+/* Achievement rules are in the 'achievements.criteria' JSON, which this function reads. Adding a badge means changing the seed, not deploying*/
+function unlockedSlugs(context: RewardContext, level: number): string[] {
+  const { stats, achievements, matchAnswers } = context;
   const answeredEverything = matchAnswers.length > 0;
   const perfectMatch = answeredEverything && matchAnswers.every((a) => a.isCorrect);
   const fastestThisMatch = matchAnswers
@@ -78,7 +82,7 @@ async function unlockedSlugs(params: {
         met = stats.answers >= (criteria.minAnswers ?? 50) && stats.accuracy >= threshold;
         break;
       case 'level':
-        met = params.level >= threshold;
+        met = level >= threshold;
         break;
       case 'perfect_match':
         met = perfectMatch && matchAnswers.length >= (criteria.minAnswers ?? 10);
@@ -109,40 +113,38 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
   const awards: MatchAward[] = [];
   for (const player of players) 
   {
-    if (player.user.isBot) 
+    if (player.user.isBot)
       continue;
     const xpGained = xpForMatch({ score: player.score, rank: player.finalRank });
-    // The database adds the XP itself
-    const updated = await prisma.user.update({
-      where: { id: player.userId },
-      data: { xp: { increment: xpGained } },
-      select: { xp: true },
-    });
-    const xpAfter = updated.xp;
-    const xpBefore = xpAfter - xpGained;
-    const levelBefore = levelFromXp(xpBefore);
-    const levelAfter = levelFromXp(xpAfter);
-    await prisma.user.update({
-      where: { id: player.userId },
-      data: { level: levelAfter },
-    });
-    const slugs = await unlockedSlugs({
-      userId: player.userId,
-      matchId,
-      level: levelAfter,
-    });
-    const newlyUnlocked: MatchAward['achievements'] = [];
-    if (slugs.length > 0) 
-    {
-      const rows = await prisma.achievement.findMany({ where: { slug: { in: slugs } } });
-      for (const achievement of rows) 
+    const context = await loadRewardContext(player.userId, matchId);
+    /* One transaction per player, so the XP, the level and the new achievements are saved together or not at all.
+    Separate writes could fail half way and leave, say, the XP added but the level or the badges missing */
+    const award = await prisma.$transaction(async (tx) => {
+      // The database adds the XP itself
+      const updated = await tx.user.update({
+        where: { id: player.userId },
+        data: { xp: { increment: xpGained } },
+        select: { xp: true },
+      });
+      const xpAfter = updated.xp;
+      const levelBefore = levelFromXp(xpAfter - xpGained);
+      const levelAfter = levelFromXp(xpAfter);
+      await tx.user.update({
+        where: { id: player.userId },
+        data: { level: levelAfter },
+      });
+      const slugs = new Set(unlockedSlugs(context, levelAfter));
+      const newlyUnlocked: MatchAward['achievements'] = [];
+      for (const achievement of context.achievements)
       {
-        // 'createMany' + skipDuplicates would hide which ones are new, and the client wants to celebrate exactly the new ones.
-        const created = await prisma.userAchievement.createMany({
+        if (!slugs.has(achievement.slug))
+          continue;
+        // One row at a time: 'count' then says whether this one is new, and the client wants to celebrate exactly the new ones
+        const created = await tx.userAchievement.createMany({
           data: [{ userId: player.userId, achievementId: achievement.id }],
           skipDuplicates: true,
         });
-        if (created.count > 0) 
+        if (created.count > 0)
         {
           newlyUnlocked.push({
             slug: achievement.slug,
@@ -151,14 +153,9 @@ export async function grantMatchRewards(matchId: number): Promise<MatchAward[]> 
           });
         }
       }
-    }
-    awards.push({
-      userId: player.userId,
-      xpGained,
-      levelBefore,
-      levelAfter,
-      achievements: newlyUnlocked,
+      return { userId: player.userId, xpGained, levelBefore, levelAfter, achievements: newlyUnlocked };
     });
+    awards.push(award);
   }
   return awards;
 }

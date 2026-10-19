@@ -2,12 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { DIFFICULTY_PRESETS, createRoomSchema, roomCodeSchema } from '@wkb/shared';
 import { prisma } from '../db.js';
-import { badRequest, notFound } from '../lib/httpError.js';
+import { badRequest, notFound, tooMany } from '../lib/httpError.js';
 import { roomCode } from '../lib/random.js';
 import { currentUser, requireAuth } from '../plugins/auth.js';
 import { buildRoomSummary, listPublicRooms, roomInclude } from '../services/rooms.js';
 import { availableDeckSize } from '../game/draw.js';
 import { announceRoom } from '../game/registry.js';
+
+/* A room costs the client one request and the database a row that outlives it, so each account gets a budget.
+Far above what playing needs (one room per match at most), far below what a script would make */
+const ROOMS_PER_HOUR = 20;
 
 // Rooms are created over HTTP; activity inside a room uses the WebSocket
 export async function roomRoutes(app: FastifyInstance): Promise<void> {
@@ -26,9 +30,17 @@ export async function roomRoutes(app: FastifyInstance): Promise<void> {
       throw notFound('error.room.notFound');
     return { room: await buildRoomSummary(room) };
   });
-  app.post('/api/rooms', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/api/rooms', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const me = currentUser(request);
     const input = createRoomSchema.parse(request.body);
+    const recent = await prisma.room.count({
+      where: { hostUserId: me.id, createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
+    });
+    if (recent >= ROOMS_PER_HOUR)
+      throw tooMany('error.room.tooMany');
     // A category room is a separate room, not a filter. Its category comes from the one selected id
     const primaryCategoryId = input.mode === 'category' ? (input.settings.categoryIds[0] ?? null) : null;
     if (primaryCategoryId !== null) 

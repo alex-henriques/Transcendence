@@ -129,7 +129,8 @@ export function CreateRoom(): JSX.Element {
       {
         setErrors(error.fields);
         setFormError(error.code);
-      } else 
+      }
+      else
       {
         setFormError('error.internal');
       }

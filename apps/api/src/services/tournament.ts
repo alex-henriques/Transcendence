@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { Difficulty } from '@wkb/shared';
 import { applyDelta, computeScore } from '@wkb/shared';
 import { prisma } from '../db.js';
@@ -45,8 +46,9 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
   if (!tournament) 
     return null;
   const userIds = new Set<number>();
-  for (const m of tournament.matchups) {
-    if (m.playerAId) 
+  for (const m of tournament.matchups)
+  {
+    if (m.playerAId)
       userIds.add(m.playerAId);
     if (m.playerBId) 
       userIds.add(m.playerBId);
@@ -84,9 +86,11 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
           roomCode: m.roomId ? (roomById.get(m.roomId) ?? null) : null,
           winnerId: m.winnerId,
           players: [m.playerAId, m.playerBId].flatMap((id) => {
-            if (!id) return [];
+            if (!id)
+              return [];
             const u = byId.get(id);
-            if (!u) return [];
+            if (!u)
+              return [];
             return [
               {
                 id: u.id,
@@ -121,37 +125,44 @@ export async function bracketView(tournamentId: number): Promise<BracketView | n
   };
 }
 
-// Place humans first, then fill with bots, so a solo player always gets a real matchup of their own.
+// Row lock on the tournament until the transaction ends, so join, leave, fill and start queue behind each other instead of interleaving
+export async function lockTournament(tx: Prisma.TransactionClient, id: number): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM tournaments WHERE id = ${id} FOR UPDATE`;
+}
+
+/* Place humans first, then fill with bots, so a solo player always gets a real matchup of their own. The checks and the draw run under
+the tournament's lock; read outside it, a player could leave between the "bracket is full" check and the draw */
 export async function startTournament(tournamentId: number, requestedBy: number): Promise<string | null> {
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-    include: { participants: { include: { user: { select: { isBot: true } } } } },
-  });
-  if (!tournament) 
-    return 'error.notFound';
-  if (tournament.createdById !== requestedBy) 
-    return 'error.tournament.hostOnly';
-  if (tournament.status !== 'registration') 
-    return 'error.tournament.alreadyStarted';
-  if (tournament.participants.length !== tournament.size) 
-    return 'error.tournament.needsFullBracket';
-  const humans = shuffle(tournament.participants.filter((p) => !p.user.isBot).map((p) => p.userId));
-  const bots = shuffle(tournament.participants.filter((p) => p.user.isBot).map((p) => p.userId));
-  const ordered: number[] = [];
-  const slots = tournament.size;
-  for (let i = 0; i < slots; i += 2) 
-  {
-    const human = humans.shift();
-    const other = bots.shift() ?? humans.shift();
-    if (human !== undefined) 
-      ordered.push(human);
-    if (other !== undefined) 
-      ordered.push(other);
-  }
-  for (const leftover of [...humans, ...bots]) 
-    ordered.push(leftover);
-  await prisma.$transaction(async (tx) => {
-    for (let seed = 0; seed < ordered.length; seed += 1) 
+  const error = await prisma.$transaction(async (tx) => {
+    await lockTournament(tx, tournamentId);
+    const tournament = await tx.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { participants: { include: { user: { select: { isBot: true } } } } },
+    });
+    if (!tournament)
+      return 'error.notFound';
+    if (tournament.createdById !== requestedBy)
+      return 'error.tournament.hostOnly';
+    if (tournament.status !== 'registration')
+      return 'error.tournament.alreadyStarted';
+    if (tournament.participants.length !== tournament.size)
+      return 'error.tournament.needsFullBracket';
+    const humans = shuffle(tournament.participants.filter((p) => !p.user.isBot).map((p) => p.userId));
+    const bots = shuffle(tournament.participants.filter((p) => p.user.isBot).map((p) => p.userId));
+    const ordered: number[] = [];
+    const slots = tournament.size;
+    for (let i = 0; i < slots; i += 2)
+    {
+      const human = humans.shift();
+      const other = bots.shift() ?? humans.shift();
+      if (human !== undefined)
+        ordered.push(human);
+      if (other !== undefined)
+        ordered.push(other);
+    }
+    for (const leftover of [...humans, ...bots])
+      ordered.push(leftover);
+    for (let seed = 0; seed < ordered.length; seed += 1)
     {
       const userId = ordered[seed];
       if (userId === undefined) 
@@ -180,7 +191,10 @@ export async function startTournament(tournamentId: number, requestedBy: number)
       }
     }
     await tx.tournament.update({ where: { id: tournamentId }, data: { status: 'running' } });
+    return null;
   });
+  if (error)
+    return error;
   await prepareRound(tournamentId, 1);
   return null;
 }
@@ -194,8 +208,8 @@ async function prepareRound(tournamentId: number, round: number): Promise<void> 
     where: { tournamentId, round, status: 'pending' },
     orderBy: { slot: 'asc' },
   });
-  for (const matchup of matchups) 
-    {
+  for (const matchup of matchups)
+  {
     /* A seat left empty by an erased account. Nobody can play this matchup, so the player who is there advances, as they would if their opponent
     never turned up. */
     if (!matchup.playerAId || !matchup.playerBId)
@@ -516,7 +530,7 @@ async function checkRoundCompletion(tournamentId: number, round: number): Promis
   await prepareRound(tournamentId, nextRound);
 }
 
-// Marks a matchup as being played, so the bracket shows iit live
+// Marks a matchup as being played, so the bracket shows it live
 export async function markMatchupPlaying(roomId: number): Promise<void> {
   await prisma.tournamentMatchup.updateMany({
     where: { roomId, status: 'ready' },

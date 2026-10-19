@@ -679,6 +679,17 @@ async function main() {
     !listedAfterWalkout.json.rooms.some((room) => room.code === secondCode),
   );
 
+  // The match waits 30 seconds (ABANDON_GRACE_MS in the engine) for a human to come back, so a page reload doesn't end it.
+  guest.events = [];
+  await guest.connect(secondCode);
+  check(
+    'a player who comes back within the grace period finds the match still running',
+    guest.find('room:state').at(-1)?.match != null,
+  );
+
+  // Gone for good this time: once the grace period runs out, the match stops.
+  guest.socket.close();
+  await new Promise((resolve) => setTimeout(resolve, 33000));
   guest.events = [];
   await guest.connect(secondCode);
   check(

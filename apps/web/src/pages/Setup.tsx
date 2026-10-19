@@ -108,7 +108,9 @@ export function Setup(): JSX.Element {
       {
         setErrors(error.fields);
         setProblem(error.code);
-      } else setProblem('error.internal');
+      }
+      else
+        setProblem('error.internal');
       setBusy(false);
     }
   };
