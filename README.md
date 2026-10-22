@@ -1,8 +1,9 @@
-*This project has been created as part of the 42 curriculum by caida-si, alehenri, mlima-de, rsommer.*
+*This project has been created as part of the 42 curriculum by caida-si, alehenri, mlima-de, rsommer, hjuma.*
 
 # Who knows best?
 
-**A multiplayer quiz game you play in the browser.**: A card with a statement appears and everyone in the room has a few seconds to decide; **myth or truth?**, when time runs out, the answer is revealed with who got it right, who didn't, and the updated scoreboard. Then the next card is dealt.
+**A multiplayer quiz game you play in the browser.** A card with a statement appears and everyone in the room has a few seconds to decide: myth or truth? 
+When time runs out, the answer is revealed with who got it right, who didn't, and the updated scoreboard. Then the next card is dealt.
 
 ```sh
 make          # then open https://localhost:8443
@@ -89,8 +90,6 @@ Three accounts are ready to use straight away, the password for all of them is *
 | 'alan@wkb.local' | Français |
 
 They're also listed on the login screen; click one to fill in the form.
-
-They exist because the generated '.env' sets 'SEED_DEMO_USERS=true'. A shared public password is fine for a local run or an evaluation, not for a server on the internet: set it to 'false' there, and the accounts are neither created nor usable (any created earlier are locked), and the login screen stops listing them.
 
 ### Configuration
 
@@ -277,7 +276,7 @@ These were decisions, not defaults. AI generated interfaces tend to share one ho
 
 - A page that doesn't exist shows the visitor from the space suit, adrift between two planets.
 - A room or bracket that isn't there is dealt as a card, your false belief written as a statement, with "Myth" stamped underneath, in the same reveal panel you've seen twenty times a match. It's plum, never red, because nobody got anything wrong.
-- An expired session is the one exception,  a plain sentence above the login form. Someone whose game just ended wants the form and a reason, not a joke.
+- An expired session is the one exception, a plain sentence above the login form. Someone whose game just ended wants the form and a reason, not a joke.
 
 #### Two things that survived the redesign
 
@@ -373,10 +372,12 @@ Variety is counted in facts, never in cards. Someone who knows a fact will answe
 - 'cards.is_true' (boolean) and 'cards.form' (enum 'affirmative | negated').
 - An index on '(category_id, difficulty, active)' and a unique constraint on '(fact_id, form)'.
 
-Primary key '(user_id, fact_id)'. It's keyed by *fact*, never by card, which is how repetition is avoided, it also feeds the percategory accuracy in the statistics.
-All of a match's cards are written when it starts, not one at a time. That's why reconnecting is a simple lookup rather than rebuilding state. 'served_at' and 'deadline_at' ('timestamptz') are written *after* the card goes out, because the deadline the server actually enforces is the one in memory.
+**'user_seen_facts': what each player has already been shown.** Primary key '(user_id, fact_id)'. It's keyed by *fact*, never by card, which is how repetition is avoided. It also feeds the per-category accuracy in the statistics.
 
-A player who drops keeps their row, score and rank; only 'connected' changes. Nothing is deleted while a match is running.
+**'match_cards': the whole deck, written up front.** All of a match's cards are written when it starts, not one at a time. That's why reconnecting is a simple lookup rather than rebuilding state. 'served_at' and 'deadline_at' ('timestamptz') are written *after* the card goes out, because the deadline the server actually enforces is the one in memory.
+
+**'match_players': nobody is removed mid-match.** A player who drops keeps their row, score and rank; only 'connected' changes. Nothing is deleted while a match is running.
+
 
 **'answers': three timings per vote.**
 
@@ -396,25 +397,25 @@ Plus a 'reaction_trusted' flag. Keeping all three makes it possible to audit how
 
 **15 modules claimed, worth 21 points. The maximum score is 19**: the 14 required points plus the 5p bonus cap.
 
-| # | Module | Type | Pts |
-|---|---|---|---|
-| 1 | Use a framework for both frontend and backend | Major | 2 |
-| 2 | Implement a complete web-based game | Major | 2 |
-| 3 | Multiplayer game (more than two players) | Major | 2 |
-| 4 | Real time features using WebSockets | Major | 2 |
-| 5 | Standard user management and authentication | Major | 2 |
-| 6 | AI opponent | Major | 2 |
-| 7 | Use an ORM for the database | Minor | 1 |
-| 8 | Remote authentication with OAuth 2.0 | Minor | 1 |
-| 9 | Tournament system | Minor | 1 |
-| 10 | Gamification system | Minor | 1 |
-| 11 | Game statistics and match history | Minor | 1 |
-| 12 | Game customization options | Minor | 1 |
-| 13 | Multiple languages (at least 3) | Minor | 1 |
-| 14 | Custom made design system | Minor | 1 |
-| 15 | GDPR compliance features | Minor | 1 |
-| | 6 majors × 2 + 9 minors × 1 | | 21 |
-| | capped at 14 + 5 bonus | | 19 |
+| # | Module | Type | Pts | Owner |
+|---|---|---|---|---|
+| 1 | Use a framework for both frontend and backend | Major | 2 | alehenri, hjuma |
+| 2 | Implement a complete web-based game | Major | 2 | rsommer |
+| 3 | Multiplayer game (more than two players) | Major | 2 | rsommer |
+| 4 | Real time features using WebSockets | Major | 2 | rsommer |
+| 5 | Standard user management and authentication | Major | 2 | caida-si |
+| 6 | AI opponent | Major | 2 | mlima-de |
+| 7 | Use an ORM for the database | Minor | 1 | caida-si |
+| 8 | Remote authentication with OAuth 2.0 | Minor | 1 | caida-si |
+| 9 | Tournament system | Minor | 1 | mlima-de |
+| 10 | Gamification system | Minor | 1 | mlima-de |
+| 11 | Game statistics and match history | Minor | 1 | mlima-de |
+| 12 | Game customization options | Minor | 1 | hjuma |
+| 13 | Multiple languages (at least 3) | Minor | 1 | hjuma |
+| 14 | Custom made design system | Minor | 1 | hjuma |
+| 15 | GDPR compliance features | Minor | 1 | caida-si |
+| | 6 majors × 2 + 9 minors × 1 | | 21 | |
+| | capped at 14 + 5 bonus | | 19 | |
 
 Dependencies were respected; modules 3, 6, 9, 11 and 12 all need a working game, so module 2 was finished and playable before any of them started.
 
@@ -474,13 +475,15 @@ Keeping them apart means no message ever needs routing logic to figure out wheth
 ### 5. Standard user management and authentication (Major, 2 pts)
 
 **How:** sign up and login with email and password, hashed with Argon2id (19 MiB memory, 2 passes, 1 lane, a 16byte random salt per password). Profile editing, avatar upload with a generated default, and friends with live online status.
-**Signing up doesn't log you in.** The server issues no token and sets no cookie at sign up. The new account goes to the sign in screen with the email prefilled and types the password it just chose, which is also the first chance to notice if it isn't the password they meant.
+**Signing up doesn't log you in.** The server issues no token and sets no cookie at sign up. The new player goes to the sign in screen with the email prefilled and types the password they just chose, which is also the first chance to notice if it isn't the password they meant.
 
 **Sessions:**
-- A **short-lived JWT access token**, kept only in memory and never in 'localStorage', where an injected script could read it.
+- A **short lived JWT access token**, kept only in memory and never in 'localStorage', where an injected script could read it.
 - An **opaque refresh token** in an 'httpOnly', 'SameSite=Strict', 'Secure' cookie, scoped to '/api/auth'.
 - Refresh tokens are **stored as keyed hashes**, so a copy of the database isn't enough to create a session. They rotate on every refresh, inside a transaction that prevents double use.
+
 **Default avatar:** the subject requires one. Ours derives a fixed colour from the display name, so players stay easy to tell apart on a scoreboard.
+
 **Code:** 'apps/api/src/routes/auth.ts', 'apps/api/src/lib/tokens.ts', 'apps/web/src/auth/'
 
 ### 6. AI opponent (Major, 2 pts)
@@ -493,7 +496,8 @@ What makes it feel human:
 - **Realistic reaction times**, drawn from a truncated normal distribution. A sample that lands after the deadline is a bot that didn't answer in time, which humans do too.
 - **It adapts to the room's settings.** Its average speed is calibrated against the 10sec medium window and rescaled to whatever window the room uses, which is how the bot uses the customisation options as the subject asks.
 - **Difficulty matters.** Hard cards lower its accuracy by 8 points; easy cards raise it by 8.
-**It's genuinely challenging and it does win.** 'Oracle' has 0.80–0.85 accuracy and a 3.0sec average reaction. 'Rookie' has 0.55 and 6.2 sec. Six more sit in between.
+
+**It's genuinely challenging and it does win.** 'Oracle' has 0.80–0.85 accuracy and a 3.0sec average reaction. 'Rookie' has 0.55 and 6.2sec. Six more sit in between.
 **No language model plays the game.** It's a synthetic player with a set hit rate and sampled reaction times. That makes it explainable, reproducible, and able to run with no network.
 **Code:** 'apps/api/src/game/bot.ts', 'apps/api/src/seed/data.ts'
 
@@ -520,9 +524,13 @@ It handles registration, seeding, matchmaking, and automatic advancement when a 
 ### 10. Gamification (Minor, 1 pt)
 
 The subject asks for at least three of: achievements, badges, leaderboards, XP, daily challenges or rewards, and explicitly says three done well beats six done badly. We built three:
+
 1. **XP and levels.** 20 XP for playing, 10 per 100 points, and 50/25/10 for finishing 1st/2nd/3rd. 500 XP per level.
+
 2. **14 achievements**, with rules stored as 'jsonb', so adding one is a seed change.
+
 3. **A leaderboard** ranked by total score across finished matches. Bots are excluded, because a leaderboard the house can win isn't a leaderboard.
+
 Everything is saved, the profile shows a level progress bar, and the end of match panel shows only newly unlocked achievements.
 **Code:** 'apps/api/src/services/rewards.ts'
 
@@ -562,7 +570,7 @@ Category and achievement names travel as slugs and are translated in the browser
 
 ### 14. Custom made design system (Minor, 1 pt)
 
-**Why:** the subject asks for reusable components with a proper colour palette, typography and icons, at least ten. This module was claimed last because it wasn't built as a module, it's what the other thirteen are drawn with, and writing it down was the only extra work the claim needed.
+**Why:** the subject asks for reusable components with a proper colour palette, typography and icons, at least ten. This module was claimed last because it wasn't built as a module, it's what the other fourteen are drawn with, and writing it down was the only extra work the claim needed.
 **Nothing is borrowed.** 'apps/web/package.json' has no component library and no icon library, just React, the router, i18next, Zod, and Tailwind for utilities (which the subject requires). Every component, colour and drawing below was made in this repository.
 
 **Eighteen reusable components**, each used by at least one file other than the one that defines it:
@@ -608,7 +616,7 @@ Indented JSON, sent with a 'Content Disposition' header so the browser saves it 
 What gets removed:
 - **Everything linked to the user cascades**: sessions, answers, friendships, achievements and match participation all go in one delete.
 - **Tournament records are the exception.** 'tournament_matchups.player_a_id', 'player_b_id', 'winner_id' and 'tournaments.winner_id' hold a user id without a foreign key, so they're set to null in the same transaction. An id still pointing at a deleted person isn't erasure.
-- **The uploaded avatar** is deleted from disk once the delete has committed (if it failed, the account would still need the file), and the refresh cookie is cleared on the way out.
+- **The uploaded avatar** is deleted from disk first, and the refresh cookie is cleared on the way out.
 
 #### Confirmation emails: not implemented, and not claimed
 
@@ -621,14 +629,14 @@ Adding email for one bullet point would mean a credential to store, a service to
 | Feature | Description |
 |---|---|
 | Welcome page | A public front page, reached from the logo, what the game is, how a round works, and the eight suits, built from the same components as the game. |
-| Sign up | Email, display name and password, validated by the same Zod schema on both sides. Creating an account doesn't log you in. Display names are unique ignoring case ("Ada" and "ada" can't both exist) and use Latin letters, so a Cyrillic look-alike can't pass for someone else on the leaderboard. |
+| Sign up | Email, display name and password, validated by the same Zod schema on both sides. Creating an account doesn't log you in. |
 | First run setup | A new account picks its name, language and theme once, before its first round. Tied to 'users.onboarded_at', so it follows the account, not the browser. |
 | Login | Argon2id verification that takes about the same time whether or not the account exists, so the endpoint can't reveal which emails are registered. |
 | OAuth sign in | Google, GitHub and 42 intra, authorization code flow with a CSRF protected 'state'. |
 | Session | Access token in memory, rotating 'httpOnly' refresh cookie, renewed a minute before it expires. |
 | Password change | Requires the current password and logs out every other session. |
 | Profile | Display name, language, avatar, level and XP progress. |
-| Avatar upload | File type checked from the actual bytes, 2 MB limit, metadata (EXIF, GPS position, XMP, comments) stripped before the file is stored, old file removed. |
+| Avatar upload | File type checked from the actual bytes, 2 MB limit, old file removed. |
 | Stock avatars | Sixteen ink stamps, two per suit, one of each pair isn't a person, the other is a person dressed for that suit. Chosen at setup or from the profile. |
 | Default avatar | Generated from the display name with a fixed colour, for anyone who picks neither. |
 | Friends | Request, accept, decline, remove, block. |
@@ -676,22 +684,41 @@ Adding email for one bullet point would mean a credential to store, a service to
 | Error screens | A 404, a crash screen, a missing room or bracket, a dropped connection and an expired session, each handled where it happens rather than by one generic page. |
 | Clean console | Checked in headless Chrome by 'make console-check'. |
 
+
 ## Team Information
 
-**We are a team of four**, the size the subject describes.
+We're a team of 5 people: caida-si, alehenri, mlima-de, rsommer, and hjuma.
 
 | Member | Role(s) | Responsibilities |
 |---|---|---|
-| caida-si | Product Owner/Project Manager | Product vision, scope and priorities; the phase plan and its tracking; auth, OAuth and the database schema. |
-| alehenri | Tech Lead | Stack and architecture decisions; the infrastructure (Docker Compose, the nginx edge and TLS, the Makefile and setup scripts); the GitHub repository, its reviews and merges. |
-| mlima-de | Developer | The React frontend and the design system. |
-| rsommer  | Developer | The match engine, the WebSocket channels and the AI opponents. |
+| caida-si | Product Owner, Developer | Game rules and scope; auth, OAuth, database schema and ORM, GDPR |
+| alehenri | Tech Lead, Developer | Stack and architecture; infrastructure, repo maintenance, card pipeline, test tooling |
+| mlima-de | Project Manager, Developer | Phase plan and module dependencies; AI opponent, tournament, gamification, statistics |
+| rsommer  | Developer | Match engine, multiplayer rooms, WebSockets, reconnection |
+| hjuma | Developer | React frontend, design system, i18n, game customization |
+
 
 ### What each role meant in practice
 
-- **Product Owner/Project Manager (caida-si):** decided what the game was, what the scoring rules should be, and what to leave out. For example, we dropped community submitted cards because they would have unlocked the AI content moderation minor, but they needed a submission screen, a review queue and a content policy, which is a lot of work for one point. Also ordered the work so every finished phase left something deliverable, and tracked which modules depended on which.
-- **Tech Lead (alehenri):** chose the stack, designed the schema, and drove the three decisions the architecture rests on: the server owns the clock, the deck is drawn up front, and the shared package is the only contract between the two sides.
-- **Developers (all four):**  we split the code by area. rsommer built the match engine, WebSockets and the AI opponents; mlima-de built the React frontend and the design system; caida-si built auth, OAuth and the database schema; alehenri built the infrastructure (Docker Compose, the nginx edge and TLS, the Makefile and setup scripts) and ran the GitHub repo: branches, pull request reviews and merges.
+- **Product Owner (caida-si):** decided what the game was, what the scoring rules should be, and what to leave out. For example, we dropped community submitted cards, ie they would have unlocked the AI content moderation minor, but they needed a submission screen, a review queue and a content policy, which is a lot of work for one point.
+- **Project Manager (mlima-de):** ordered the work so every finished phase left something deliverable, tracked which modules depended on which, and kept the GitHub Issues board up to date.
+- **Tech Lead (alehenri):** chose the stack and drove the three decisions the architecture rests on, ie, the server owns the clock, the deck is drawn up front, and the shared package is the only contract between the two sides. Also maintained the repo, branches, pull request reviews and merges.
+- **Developers (all five):** we split the code by area:
+  - **caida-si:** sign-up and login, OAuth, the database schema and Prisma, GDPR export and deletion.
+  - **alehenri:** Docker Compose, the nginx edge and TLS, the Makefile and setup scripts, the card pipeline in 'tools/cardgen/', and the test tooling ('make e2e', 'make console-check', 'make a11y').
+  - **mlima-de:** the AI opponents, the tournament system, gamification, and statistics and match history.
+  - **rsommer:** the match engine and its state machine, multiplayer rooms, WebSockets, and reconnection.
+  - **hjuma:** the React frontend, the design system, translations into three languages, and game customization.
+
+## Individual Contributions
+
+| Member | Built | Challenges they solved (see below) |
+|---|---|---|
+| caida-si | Auth, sessions, OAuth, Prisma schema, GDPR export and deletion | #6 Console errors on pages with nothing wrong |
+| alehenri | Docker, nginx and TLS, Makefile, card pipeline, test tooling, repo maintenance | #2 The "not" giveaway, #10 Prisma vs. the container |
+| mlima-de | AI opponents, tournaments, gamification, statistics | Simulating bot vs bot tournament matches (see module 9) |
+| rsommer | Match engine, rooms, WebSockets, reconnection, scoring | #1 The 50/50 problem, #3 Connection speed, #4 Reconnecting, #7 Database write, #9 Message ordering |
+| hjuma | React frontend, design system, i18n, customization | #5 The countdown that ended early, #8 Cards ignoring the language switcher |
 
 
 ## Project Management
@@ -721,7 +748,7 @@ Module dependencies were checked, not assumed. Modules 3, 6, 9, 11 and 12 all ne
 |---|---|
 | Git | Small commits, each describing what changed. |
 | The Makefile | In practice, the task list. 'make test' is our definition of "still working". |
-| 'make e2e' | 75 assertions that play a real match through the real API. |
+| 'make e2e' | 74 assertions that play a real match through the real API. |
 | 'make console-check' | Headless Chrome across 17 screens, failing on any console output. |
 | 'make a11y' | Contrast, tap target size and overflow across 14 routes, both themes, 8 screen widths. |
 | 'make check' | Card set balance, coverage and the negation tell. |
@@ -732,7 +759,7 @@ Module dependencies were checked, not assumed. Modules 3, 6, 9, 11 and 12 all ne
 
 - **Day to day:** a Discord and a WhatsApp group for quick questions, blockers and "I'm about to change X" warnings.
 - **Meetings:** we met at 42 to review progress against the phase plan and decide what each person takes next and so on.
-- **Code:** all changes went through pull requests on GitHub. The repo maintainer reviewed and merged. Branches were named by feature and login, and 'main' was always kept in a state where 'make' worked.
+- **Code:** all changes went through pull requests on GitHub. alehenri, as the repo maintainer, reviewed and merged. Branches were named by feature and login, and 'main' was always kept in a state where 'make' worked.
 - **Tasks:** GitHub Issues, one item per feature, assigned to whoever owned it.
 - **Decisions:** anything non obvious was written down where it would be found later, as comments in the code explaining *why*, and in this README as the justification for each module and technical choice.
 
@@ -744,21 +771,24 @@ Module dependencies were checked, not assumed. Modules 3, 6, 9, 11 and 12 all ne
 **Problem:** with only two possible answers, the proportion of true cards is information players can exploit. If 60% of cards were true, the best strategy would be to answer "truth" instantly every time, and the streak multiplier would reward exactly that, therefore the game would be dead.
 **Fix:** balance is a property of the *draw*, not the card set, which means each match takes half its cards from the true pool and half from the false pool, in two queries, then shuffles them. If there aren't enough cards for the requested length, the deck shrinks but the guarantee doesn't, the two halves never differ by more than one card. See 'apps/api/src/game/draw.ts'.
 
+
 #### 2. The "not" giveaway, which the 50/50 fix creates
 
 **Problem:** giving each fact a true and a false wording is the obvious way to guarantee balance, and the obvious way to write the false one is to add "not". That would hand players a free strategy; spot the negation, answer false, never read the statement.
 **Fix:** the false wording swaps the key detail instead:
 > The Nile flows **northward**. -> The Nile flows **southward**.
+
 **And then we measured it.** 'make check' counts negation words on each side. The shipped set scores −1.67 percentage points, negation words are slightly *more* common in true cards, so they give nothing away. Some true cards naturally contain a negation, like "Switzerland has no coastline", which is what pushes the number below zero.
 
 #### 3. Connection speed as an unfair advantage
 
 **Problem:** scoring on speed punishes players for slow networks, and a modified client could claim an impossible reaction time.
-**Fix:** score the server's own measurement, and only check the client's claim.
+**Fix:** limit what a client is allowed to claim.
 - The server pings every 5 seconds and keeps a moving average of each connection's round trip time (RTT).
-- The server knows when it sent the card and when the vote arrived. That elapsed time is the reaction plus one round trip, so the RTT is taken off and the rest is what gets scored. The allowance for the RTT is capped at 250 ms: the client decides when to answer a ping, and could otherwise hold its replies back to look slower and earn a bigger allowance.
-- The claimed reaction time is never scored. It only has to fall within '[serverElapsed − rtt − 250ms, serverElapsed + 250ms]'; a claim outside that window marks the vote untrusted, and an untrusted vote gets the worst time of the round.
+- A claimed reaction time is accepted only if it falls within '[serverElapsed − rtt − 250ms, serverElapsed + 250ms]'. Anything outside gets the worst time of the round.
+- The RTT used is capped at one second, the client decides when to answer a ping, so without a cap, a client could delay its replies to widen the window as far as it liked.
 - All three numbers (claimed, RTT, accepted) are stored separately, so the behaviour can be audited later.
+
 It's about 40 lines, in 'packages/shared/src/scoring.ts'.
 
 #### 4. Reconnecting without replaying the match
@@ -789,7 +819,8 @@ It's about 40 lines, in 'packages/shared/src/scoring.ts'.
 #### 9. Two messages from one socket, running at once
 
 **Problem:** the room channel started a handler for each message without waiting for the previous one, a client that sent 'add_bot' then 'match:start' back to back could have the start check the room *before* the bot joined, and be told it needed a second player.
-**Fix:** handlers are now chained on a promise, so they run in order, just as WebSockets deliver in order. **One exception: 'pong' is answered immediately.** It's a timing measurement, and time spent waiting behind a database query would be counted as network latency, which is exactly the number that decides how much reaction-time leeway a player gets.
+**Fix:** handlers are now chained on a promise, so they run in order, just as WebSockets deliver in order. **One exception: 'pong' is answered immediately.** It's a timing measurement, and time spent waiting behind a database query would be counted as network latency, which is exactly the number that decides how much reaction time leeway a player gets.
+
 This bug surfaced while writing the test for host handover, not from a bug report.
 
 #### 10. Prisma vs. the container
@@ -797,6 +828,7 @@ This bug surfaced while writing the test for host handover, not from a bug repor
 **Problem:** the API crashed in a loop on first boot, for two reasons:
 - The Prisma client was generated in a build stage without OpenSSL, so it targeted 'openssl-1.1.x' while the runtime image had 'openssl-3.0.x'.
 - The CLI couldn't write its engine directory as the unprivileged 'node' user.
+
 **Fix:** pinned 'binaryTargets' instead of relying on auto detection, installed OpenSSL in the build stage too, and gave the runtime user ownership of the app folder. Both fixes are commented where they live, so nobody has to rediscover them.
 
 ## Resources
@@ -849,6 +881,7 @@ The subject asks which tasks and which parts, so here's the detail.
 | 'forms' | Writes the true and false wording of each fact, twenty at a time. |
 | 'verify' | A blind check, reads a wording *without* being told its stored answer, and says whether it's true. |
 | 'translate' | Translates, then blind checks the translation the same way, because translation flips meaning about as often as negation does. |
+
 The model is 'claude-sonnet-5' at 'temperature: 0', called through the Anthropic Messages API. When the blind check disagrees with a card, nothing is fixed automatically, the card goes to 'work/review-queue.json' and waits for a person.
 
 **What was actually run:**
@@ -894,13 +927,13 @@ make test
 
 ### 'make e2e': a real match, start to finish
 
-**75 assertions** that play a real match through the real API and the real WebSocket. In one run:
+**74 assertions** that play a real match through the real API and the real WebSocket. In one run:
 1. Two accounts sign up and log in.
 2. A room is created and a bot is added.
 3. Six cards are played.
 4. One player drops mid match and reconnects.
 5. One player switches language mid card.
-6. The host walks out of a second room, and the last human walks out of a match: coming back within the 30 second grace period finds it still running, staying away ends it.
+6. The host walks out of a second room, and the last human walks out of a match.
 7. The saved results are checked.
 
 Among other things, it verifies that:
@@ -919,9 +952,8 @@ Among other things, it verifies that:
 Loads 17 screens in headless Chrome, signs in, switches language three times, and opens a room (which opens both WebSocket channels). It fails on any console error or warning, any page error, any failed request, and any non API HTTP status of 400 or above.
 
 ```
-75 passed, 0 failed
 Checked 17 screens in headless Chrome.
-Console is clean: no errors, no warnings, no failed requests.
+Console is clean, no errors, no warnings, no failed requests.
 ```
 
 ### 'make check': the card set
@@ -946,6 +978,7 @@ Listed here because a reviewer will find them anyway.
 - **contrast:** every text and background pair meets WCAG AA in light and dark mode, measured on every visible piece of text across fourteen routes in both themes, not sampled;
 - **tap targets:** every interactive target on every route measures at least 24×24 (WCAG 2.2, SC 2.5.8). A control inside a padded label counts as the label, and links inside a sentence are excluded, as that criterion allows;
 - **overflow:** fourteen routes checked for horizontal scrolling at eight widths, from 320px to 1440px.
+
 **We didn't test with a screen reader**, so we're not claiming the WCAG 2.1 AA module.
 **Reusing an old refresh token isn't treated as theft.** The textbook defence is to revoke every session of a user whose old token reappears. Here, that would log people out for ordinary reasons: two tabs renewing at the same moment, or another device renewing after a password change, both present a token that was just revoked. Telling those cases apart from a stolen token would require each token to record what replaced it, which the schema doesn't do. The cookie is 'httpOnly', 'Secure' and 'SameSite=Strict', so stealing it in the first place is already hard.
 
